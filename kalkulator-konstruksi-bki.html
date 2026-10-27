@@ -1,0 +1,2161 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Kalkulator Konstruksi Lambung BKI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: lembar kerja galangan - panel input tetap di kiri, hasil bertab di kanan; aksen merah anti-fouling lambung */
+:root {
+  --bg: #eef2f5; --panel: #ffffff; --panel-2: #f6f8fa; --ink: #13212c; --muted: #5a6b78;
+  --line: #d3dce3; --accent: #b0432a; --accent-ink: #ffffff; --navy: #1e3d55; --navy-soft: #e3ecf3;
+  --ok: #2f7a4f; --warn: #a3640c; --hl: #fff4d6;
+  --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e151b; --panel: #151f28; --panel-2: #1a2631; --ink: #e4ecf1; --muted: #93a5b2;
+  --line: #2a3a46; --accent: #e0714d; --accent-ink: #1a0d08; --navy: #9cc2df; --navy-soft: #1d2e3b;
+  --ok: #6cc596; --warn: #e6ad55; --hl: #3a3218; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e151b; --panel: #151f28; --panel-2: #1a2631; --ink: #e4ecf1; --muted: #93a5b2;
+  --line: #2a3a46; --accent: #e0714d; --accent-ink: #1a0d08; --navy: #9cc2df; --navy-soft: #1d2e3b;
+  --ok: #6cc596; --warn: #e6ad55; --hl: #3a3218; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--navy); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ------- header */
+header.top { background: var(--panel); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding-block: 14px; max-width: 1480px; margin: 0 auto; }
+.brand { display: flex; gap: 14px; align-items: center; min-width: 0; }
+.mark { width: 40px; height: 40px; flex: none; }
+.brand h1 { font-family: var(--f-display); font-stretch: 75%; font-weight: 800; font-size: 22px; letter-spacing: .01em; margin: 0; line-height: 1.1; text-wrap: balance; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+button, .btn { font: inherit; font-weight: 600; font-size: 13px; border-radius: var(--r); border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--navy); }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; }
+button.small { padding: 4px 9px; font-size: 12px; }
+
+/* ------- main grid */
+main.wrap { max-width: 1480px; margin: 0 auto; padding-block: 18px 40px; display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 920px) { main.wrap { grid-template-columns: minmax(0, 1fr); } }
+
+/* ------- input panel */
+aside.inputs { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 24px); display: flex; flex-direction: column; }
+@media (max-width: 920px) { aside.inputs { position: static; max-height: none; } }
+.inputs-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--panel-2); }
+.inputs-head h2 { font-family: var(--f-display); font-stretch: 80%; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; margin: 0; color: var(--navy); }
+.inputs-body { overflow-y: auto; }
+.jump { display: none; }
+@media (max-width: 920px) { .jump { display: inline-block; } }
+details.grp { border-bottom: 1px solid var(--line); }
+details.grp > summary { list-style: none; cursor: pointer; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary .sec { font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-weight: 500; }
+details.grp > summary::after { content: "+"; font-family: var(--f-mono); color: var(--muted); margin-left: 8px; }
+details.grp[open] > summary::after { content: "–"; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 10px; padding: 2px 14px 14px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.field label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.field label .u { font-family: var(--f-mono); font-size: 11px; }
+.field input[type=number], .field input[type=text], .field select {
+  font: inherit; font-family: var(--f-mono); font-size: 13px; width: 100%; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--panel-2); color: var(--ink); font-variant-numeric: tabular-nums; }
+.field input::placeholder { color: var(--muted); opacity: .8; font-family: var(--f-body); font-size: 12px; }
+.field input.bad { border-color: var(--accent); background: var(--hl); }
+.field.check { flex-direction: row; align-items: center; gap: 8px; grid-column: 1 / -1; }
+.field.check label { color: var(--ink); font-size: 13px; }
+.field .hint { font-size: 11px; color: var(--muted); }
+.tiers { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.tier { border: 1px dashed var(--line); border-radius: 6px; padding: 8px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.tier .field.name { grid-column: 1 / 3; }
+.tier .rm { align-self: end; }
+.lj { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.lj-reg { display: flex; gap: 4px; }
+.lj-reg button[aria-pressed="true"] { background: var(--navy); color: var(--panel); border-color: var(--navy); }
+.lj-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.lj-tbl th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); text-align: left; font-weight: 600; padding: 2px 3px 4px; }
+.lj-tbl td { padding: 2px 3px; }
+.lj-tbl input, .lj-tbl select { font: inherit; font-family: var(--f-mono); font-size: 12.5px; width: 100%; padding: 4px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); color: var(--ink); }
+.lj-tbl td.z { font-family: var(--f-mono); font-size: 11px; color: var(--muted); white-space: nowrap; text-align: right; }
+.lj-tbl .ic { padding: 2px 6px; font-size: 12px; line-height: 1; }
+.lj-sum { font-family: var(--f-mono); font-size: 12px; padding: 6px 8px; border-radius: 5px; background: var(--navy-soft); color: var(--navy); }
+.lj-sum.bad { background: var(--hl); color: var(--warn); }
+.lj-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.k-lunas { color: var(--accent); } 
+
+/* ------- results */
+section.results { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.statusbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; }
+.statusbar h2 { font-family: var(--f-display); font-stretch: 75%; font-weight: 800; font-size: 26px; margin: 0; text-wrap: balance; }
+.statusbar .meta { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--f-mono); font-size: 11.5px; padding: 3px 8px; border-radius: 99px; background: var(--navy-soft); color: var(--navy); }
+.chip.warn { background: var(--hl); color: var(--warn); }
+.err { border: 1px solid var(--accent); background: var(--hl); color: var(--ink); padding: 10px 12px; border-radius: 8px; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; border-radius: 6px 6px 0 0; background: transparent; color: var(--muted); padding: 9px 14px; white-space: nowrap; margin-bottom: -2px; border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); background: var(--panel); }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.toolbar input[type=search] { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); min-width: 0; flex: 1 1 220px; max-width: 360px; }
+.toast { font-size: 12px; color: var(--ok); min-height: 1em; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.tbl-wrap { overflow-x: auto; }
+table.res { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.res th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 9px 10px; border-bottom: 1px solid var(--line); background: var(--panel-2); position: sticky; top: 0; }
+table.res td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.res td.num { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.res td.use { font-weight: 600; color: var(--ink); }
+table.res td.zone { font-family: var(--f-mono); color: var(--muted); }
+table.res td.ref { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+table.res td.prof { font-family: var(--f-mono); font-size: 12px; color: var(--navy); white-space: nowrap; }
+table.res .rin { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-word; }
+table.res tr.grp td { background: var(--navy-soft); color: var(--navy); font-weight: 700; font-size: 12.5px; border-bottom: 0; padding-top: 10px; }
+table.res tr.note td { color: var(--muted); font-size: 12px; font-style: italic; }
+.zA, .zM, .zF { display: inline-block; min-width: 18px; text-align: center; border-radius: 4px; font-weight: 600; }
+
+/* summary */
+.sum-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.sum-grid .span2 { grid-column: 1 / -1; }
+@media (max-width: 1180px) { .sum-grid { grid-template-columns: minmax(0, 1fr); } }
+.card h3 { font-family: var(--f-display); font-stretch: 80%; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--navy); margin: 0; padding: 12px 14px 8px; }
+table.mx { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.mx th, table.mx td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+table.mx th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; text-align: right; }
+table.mx th:first-child, table.mx td:first-child { text-align: left; }
+table.mx td { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.mx td:first-child { font-family: var(--f-body); white-space: normal; }
+table.mx td .sub { display: block; font-size: 11px; color: var(--navy); white-space: normal; }
+table.mx td:first-child { min-width: 9em; }
+table.mx td.max { color: var(--accent); font-weight: 600; }
+.section-svg { padding: 4px 10px 12px; }
+.section-svg svg { width: 100%; height: auto; display: block; }
+.legend { font-size: 11.5px; color: var(--muted); padding: 0 14px 12px; }
+
+dialog.share { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); width: min(640px, calc(100vw - 32px)); padding: 0; }
+dialog.share::backdrop { background: rgba(10, 18, 25, .45); }
+dialog.share .in { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+dialog.share h3 { margin: 0; font-family: var(--f-display); font-stretch: 80%; font-size: 18px; }
+dialog.share textarea { width: 100%; min-height: 220px; font-family: var(--f-mono); font-size: 12px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.proflink { font: inherit; font-family: var(--f-mono); font-size: inherit; color: var(--navy); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; text-align: inherit; }
+.proflink:hover { color: var(--accent); }
+.fnd { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 4px 14px 14px; }
+.fnd .field input, .fnd .field select { font: inherit; font-family: var(--f-mono); font-size: 13px; width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel-2); color: var(--ink); }
+.ctx { padding: 0 14px 10px; font-size: 12.5px; color: var(--muted); }
+.ctx b { color: var(--ink); }
+tr.best td { background: var(--hl); }
+tr.best td:first-child::before { content: "Rekomendasi · "; color: var(--accent); font-weight: 700; font-family: var(--f-body); font-size: 11px; }
+.badge { font-family: var(--f-mono); font-size: 10.5px; padding: 1px 6px; border-radius: 99px; background: var(--navy-soft); color: var(--navy); white-space: nowrap; }
+.badge.no { background: var(--hl); color: var(--warn); }
+.src { padding: 12px 14px; font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.src a { color: var(--navy); word-break: break-all; }
+.notes-list { margin: 0; padding: 14px 18px 16px 34px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-width: 1480px; margin: 0 auto; }
+@media (prefers-reduced-motion: no-preference) { .tabs button, button { transition: background .15s, border-color .15s, color .15s; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="8" fill="var(--navy)"/>
+        <path d="M8 12 V27 Q8 31 12 31 H28 Q32 31 32 27 V12" fill="none" stroke="var(--panel)" stroke-width="2.4"/>
+        <path d="M8 24 H32" stroke="var(--accent)" stroke-width="2.4"/>
+        <path d="M20 31 V24 M14 31 V24 M26 31 V24" stroke="var(--panel)" stroke-width="1.4"/>
+      </svg>
+      <div>
+        <h1>Kalkulator Konstruksi Lambung BKI</h1>
+        <p>Beban, tebal pelat &amp; modulus penampang · BKI Rules for Hull Pt.1 Vol.II, Edisi Januari 2026</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="btnContoh" class="ghost" type="button">Isi data contoh</button>
+      <button id="btnShare" type="button">Simpan / bagikan input</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <aside class="inputs" aria-label="Data kapal">
+    <div class="inputs-head">
+      <h2>Data kapal</h2>
+      <span class="toast" id="saveState"></span>
+      <button type="button" class="small jump" id="btnJump">Lihat hasil</button>
+    </div>
+    <form class="inputs-body" id="form" autocomplete="off"></form>
+  </aside>
+
+  <section class="results" aria-live="polite">
+    <div class="statusbar">
+      <h2 id="shipName">—</h2>
+      <span class="meta" id="meta"></span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="errBox" class="err" hidden></div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Cari komponen, mis. gading, sekat, Sec 9…" aria-label="Cari komponen">
+      <div class="row" style="justify-content:flex-start">
+        <button type="button" id="btnCopy" class="small">Salin tabel ke Excel</button>
+        <span class="toast" id="toast"></span>
+      </div>
+    </div>
+    <div id="view"></div>
+  </section>
+</main>
+<footer class="foot wrap">
+  Alat bantu perhitungan. Setiap baris mencantumkan paragraf Rules acuannya; gambar konstruksi tetap harus diperiksa dan disetujui BKI.
+  Belum mencakup cek tekuk (Sec 3 F), kekuatan memanjang lengkap (Sec 5), lelah (Sec 20), palka (Sec 17), kemudi (Sec 14) dan es (Sec 15).
+</footer>
+
+<dialog class="share" id="dlg">
+  <div class="in">
+    <h3>Simpan atau bagikan input</h3>
+    <p style="margin:0;color:var(--muted);font-size:13px">Salin teks di bawah dan kirim ke rekan. Untuk memuat input dari orang lain, tempel teksnya di sini lalu tekan <b>Muat input</b>. Input Anda juga tersimpan otomatis di browser ini.</p>
+    <textarea id="dlgText" spellcheck="false" aria-label="Input dalam format JSON"></textarea>
+    <span class="toast" id="dlgMsg"></span>
+    <div class="row">
+      <button type="button" id="dlgClose" class="ghost">Tutup</button>
+      <button type="button" id="dlgCopy">Salin teks</button>
+      <button type="button" id="dlgLoad" class="primary">Muat input</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* =============================================================================
+   engine.js - Mesin perhitungan konstruksi lambung BKI Rules for Hull 2026
+   Port 1:1 dari versi Python (bki_rules.py, profil.py, hitung_konstruksi.py).
+   ============================================================================= */
+(function (root) {
+  "use strict";
+  const sqrt = Math.sqrt, pow = Math.pow, abs = Math.abs;
+  const max = (...a) => Math.max(...a), min = (...a) => Math.min(...a);
+
+  // ============================== bki_rules ==================================
+  const R = {};
+  R.faktor_material_k = function (ReH, uji_fatigue) {
+    if (ReH < 235) return 235 / ReH;
+    const tabel = { 235: 1.0, 315: 0.78, 355: 0.72, 460: 0.62 };
+    if (tabel[ReH] !== undefined) return tabel[ReH];
+    if (ReH === 390) return uji_fatigue ? 0.66 : 0.68;
+    if (ReH > 235 && ReH < 390) return 295 / (ReH + 60);
+    return 235 / ReH;
+  };
+  R.korosi_tK = function (t, k = 1, ruang = "umum") {
+    if (ruang === "akomodasi") return 0;
+    if (ruang === "ruang_kering") return min(max(0.1 * t / sqrt(k), 1.0), 2.5);
+    if (ruang === "bangunan_atas") return t <= 10 ? 1.0 : min(0.1 * t / sqrt(k) + 0.5, 3.0);
+    return t <= 10 ? 1.5 : min(0.1 * t / sqrt(k) + 0.5, 3.0);
+  };
+  R.tebal_dengan_korosi = function (t, k = 1, ruang = "umum") {
+    const tK = R.korosi_tK(t, k, ruang);
+    return [t + tK, tK];
+  };
+  R.faktor_rasio_aspek_f2 = function (a, b) {
+    const s = min(a, b), l = max(a, b);
+    return min(sqrt(1.1 - 0.5 * pow(s / l, 2)), 1.0);
+  };
+  R.faktor_ma = function (a, l) {
+    const r = min(a / l, 1.0);
+    return 0.204 * r * (4.0 - r * r);
+  };
+  R.faktor_m = function (a, l, mk = 1.0) {
+    const ma = R.faktor_ma(a, l);
+    return max(mk * mk - ma * ma, mk * mk / 2.0);
+  };
+  R.lebar_efektif_em = function (l_nol, e, beban = "merata") {
+    const em1 = [0, 0.36, 0.64, 0.82, 0.91, 0.96, 0.98, 1.0, 1.0];
+    const em2 = [0, 0.20, 0.37, 0.52, 0.65, 0.75, 0.84, 0.89, 0.90];
+    const tb = beban === "merata" ? em1 : em2;
+    const r = l_nol / e;
+    if (r >= 8) return tb[8] * e;
+    const i = Math.floor(r), fr = r - i;
+    return (tb[i] + fr * (tb[i + 1] - tb[i])) * e;
+  };
+  R.koef_daerah_pelayaran_cRW = d => ({ unlimited: 1.0, P: 0.9, L: 0.75, T: 0.6 })[d];
+  R.koef_gelombang_c0 = function (L, cRW) {
+    if (L < 90) return (L / 25 + 4.1) * cRW;
+    if (L <= 300) return (10.75 - pow((300 - L) / 100, 1.5)) * cRW;
+    if (L < 350) return 10.75 * cRW;
+    return (10.75 - pow((L - 350) / 100, 1.5)) * cRW;
+  };
+  R.koef_panjang_cL = L => (L < 90 ? sqrt(L / 90) : 1.0);
+  R.beban_dasar_p0 = (CB, c0, cL, f = 1) => 2.1 * (max(CB, 0.6) + 0.7) * c0 * cL * f;
+  R.beban_dasar_p01 = (CB, c0, cL) => 2.6 * (max(CB, 0.6) + 0.7) * c0 * cL;
+  R.faktor_distribusi_cD = function (xL, L) {
+    if (xL < 0.2) return 1.2 - max(xL, 0.1);
+    if (xL < 0.7) return 1.0;
+    const c = 0.15 * min(max(L, 100), 250) - 10;
+    return 1.0 + c / 3.0 * (min(xL, 0.93) - 0.7);
+  };
+  R.faktor_distribusi_cF = function (xL, CB) {
+    if (xL < 0.2) return 1.0 + 5.0 / CB * (0.2 - max(xL, 0.1));
+    if (xL < 0.7) return 1.0;
+    return 1.0 + 20.0 / CB * pow(min(xL, 0.93) - 0.7, 2);
+  };
+  R.beban_geladak_cuaca_pD = function (p0, T, H, z, cD, f = 1, pL_muatan = null, hc = null) {
+    const pD = p0 * 20 * T / ((10 + z - T) * H) * cD;
+    let pDmin = max(16 * f, 0.7 * p0);
+    if (pL_muatan !== null && pL_muatan !== undefined) {
+      const pZ = (hc !== null && hc !== undefined && hc <= 1.0) ? 10 * (1 - hc) : 0;
+      pDmin = max(pDmin, pL_muatan + pZ);
+    }
+    return max(pD, pDmin);
+  };
+  R.beban_sisi_ps = (p0, cF, T, z) => (z <= T ? 10 * (T - z) + p0 * cF * (1 + z / T) : p0 * cF * 20 / (10 + z - T));
+  R.beban_sisi_ps1 = (p01, cF, T, B, z, y) => (z <= T
+    ? 10 * (T - z) + p01 * cF * (1 + z / T * (2 - z / T)) * 2 * abs(y) / B
+    : p01 * cF * 20 / (5 + z - T) * abs(y) / B);
+  R.beban_haluan_pe = function (L, v0, flare = 0) {
+    const Lx = min(L, 300);
+    let c = 0.8;
+    if (flare > 40) c = 0.4 / (1.2 - 1.09 * Math.sin(flare * Math.PI / 180));
+    return c * pow(0.2 * v0 + 0.6 * sqrt(Lx), 2);
+  };
+  R.beban_buritan_pe = function (L, flare = 0) {
+    const Lx = min(L, 300);
+    let c = 0.8;
+    if (flare > 40) c = 0.4 / (1.2 - 1.09 * Math.sin(flare * Math.PI / 180));
+    return max(0.3 * c, 0.36) * Lx;
+  };
+  R.beban_alas_pB = (p0, cF, T) => 10 * T + p0 * cF;
+  R.beban_alas_pB1 = (p01, T, B, y) => 10 * T + p01 * 2 * abs(y) / B;
+  R.tekanan_slamming_pSL = function (L, CB, Tb, xL, cRW, A_beban = null) {
+    const c1 = min(max(3.6 - 6.5 * pow(Tb / L, 0.2), 0), 1);
+    const c2 = min(0.33 * CB + L / 2500, 0.35);
+    let cSL;
+    if (xL <= 0.5) cSL = 0;
+    else if (xL <= 0.5 + c2) cSL = (xL - 0.5) / c2;
+    else if (xL <= 0.65 + c2) cSL = 1.0;
+    else cSL = 0.5 * (1 + (1 - xL) / (0.35 - c2));
+    const cA = A_beban === null ? 1.0 : min(max(10 / A_beban, 0.3), 1.0);
+    const cS = (1 + cRW) / 2;
+    const p = L <= 150 ? 162 * sqrt(L) * c1 * cSL * cA * cS : 1984 * (1.3 - 0.002 * L) * c1 * cSL * cA * cS;
+    return [p, { c1, c2, cSL, cA, cS }];
+  };
+  R.beban_geladak_bangunan_atas_pDA = function (pD, z, H, akil = false, b_rumah = null, B_lokal = null) {
+    const n = akil ? 1.0 : max(1 - (z - H) / 10, 0.5);
+    let p = pD * n;
+    if (b_rumah !== null && B_lokal) p *= 0.7 * b_rumah / B_lokal + 0.3;
+    if (!akil) p = max(p, 4.0);
+    return [p, n];
+  };
+  R.faktor_percepatan_av = function (L, v0, xL) {
+    const v = max(v0, sqrt(L));
+    const F = 0.11 * v / sqrt(L), m0 = 1.5 + F;
+    let m;
+    if (xL <= 0.2) m = m0 - 5 * (m0 - 1) * xL;
+    else if (xL <= 0.7) m = 1.0;
+    else m = 1 + (m0 + 1) / 0.3 * (xL - 0.7);
+    return F * m;
+  };
+  R.beban_geladak_muatan_pL = function (av, pc = null, h_antara = null) {
+    if (pc === null || pc === undefined) pc = max(7 * h_antara, 15);
+    return [pc * (1 + av), pc];
+  };
+  R.beban_alas_dalam_pi = (GV, h, av) => 9.81 * GV * h * (1 + av);
+  R.beban_geladak_akomodasi = av => 3.5 * (1 + av);
+  R.beban_geladak_mesin = av => 8.0 * (1 + av);
+  R.tekanan_tangki_p1 = (h1, av, rho = 1, pv = 0) => 9.81 * h1 * rho * (1 + av) + 100 * pv;
+  R.tekanan_tangki_p2 = h2 => 9.81 * h2;
+  R.tinggi_beban_h2 = function (d, hpipa, rho = 1, pv = 0) {
+    const h21 = d + hpipa, h22 = d + 2.5 * max(rho, 1.0);
+    const h24 = pv > 0 ? d + 10 * max(pv, 0.25 * rho) : 0;
+    return max(h21, h22, h24);
+  };
+  R.modulus_midship_min = function (L, B, CB, k, c0u, daerah = "unlimited") {
+    const W = k * c0u * L * L * B * (CB + 0.7) * 1e-6;
+    return W * (1 - ({ unlimited: 0, P: 0.05, L: 0.15, T: 0.25 })[daerah]);
+  };
+  R.inersia_midship_min = (W, L, k) => 3e-2 * W * L / k;
+  R.tegangan_izin_sigma_perm = (L, k) => (L < 90 ? (0.8 + L / 450) * 230 / k : 230 / k);
+  R.tegangan_memanjang_sigmaLB = (L, k) => (L < 90 ? 12.6 * sqrt(L) / k : 120 / k);
+  R.tebal_min_pelat_alas = (L, k) => min(L < 50 ? (1.5 - 0.01 * L) * sqrt(L * k) : sqrt(L * k), 16);
+  R.tebal_pelat_alas = function (L, a, pB, k, nf, daerah) {
+    const h = {}; let ta;
+    if (L < 90) {
+      const t1 = 1.9 * nf * a * sqrt(pB * k); h["tB1'"] = t1; ta = t1;
+      if (daerah !== "M") { const t2 = 1.21 * a * sqrt(pB * k); h["tB2'"] = t2; ta = max(t1, t2); }
+    } else {
+      const sp = R.tegangan_izin_sigma_perm(L, k), sLB = R.tegangan_memanjang_sigmaLB(L, k);
+      const spl = sqrt(sp * sp) - 0.89 * sLB;
+      const t1 = 18.3 * nf * a * sqrt(pB / spl), t2 = 1.21 * a * sqrt(pB * k);
+      Object.assign(h, { sigma_pl: spl, "tB1'": t1, "tB2'": t2 }); ta = max(t1, t2);
+    }
+    const [t, tK] = R.tebal_dengan_korosi(ta, k), tmin = R.tebal_min_pelat_alas(L, k);
+    return Object.assign(h, { t_aksen: ta, tK, t_rumus: t, tmin, t_perlu: max(t, tmin) });
+  };
+  R.tebal_pelat_sisi = function (L, a, ps, k, nf, daerah, pe = null, ps1 = null) {
+    const h = {}; const pu = pe ? max(ps, pe) : ps; let ta;
+    if (L < 90) {
+      const t1 = 1.9 * nf * a * sqrt(ps * k); h["tS1'"] = t1; ta = t1;
+      if (daerah !== "M" || pe) { const t2 = 1.21 * a * sqrt(pu * k); h["tS2'"] = t2; ta = max(t1, t2); }
+    } else {
+      const sp = R.tegangan_izin_sigma_perm(L, k), sLB = R.tegangan_memanjang_sigmaLB(L, k);
+      const sLS = 0.76 * sLB, tauL = 55 / k;
+      const spl = sqrt(sp * sp - 3 * tauL * tauL) - 0.89 * sLS;
+      const splmax = sqrt(pow(230 / k, 2) - 3 * tauL * tauL) - 0.89 * sLS;
+      const t1 = 18.3 * nf * a * sqrt(ps / spl), t2 = 1.21 * a * sqrt(pu * k);
+      const t3 = 18.3 * nf * a * sqrt((ps1 || ps) / splmax);
+      Object.assign(h, { sigma_pl: spl, "tS1'": t1, "tS2'": t2, "tS3'": t3 }); ta = max(t1, t2, t3);
+    }
+    const [t, tK] = R.tebal_dengan_korosi(ta, k), tmin = R.tebal_min_pelat_alas(L, k);
+    return Object.assign(h, { t_aksen: ta, tK, t_rumus: t, tmin, t_perlu: max(t, tmin) });
+  };
+  R.lunas_pelat_datar = (L, tB) => ({ b_mm: 800 + 5 * L, t_tengah: tB + 2, t_ujung: tB });
+  R.lajur_atas_sheer_strake = (L, tD, tS) => ({ b_mm: min(800 + 5 * L, 1800), t: max(0.5 * (tD + tS), tS) });
+  R.lebar_lajur_bilga = L => 800 + 5 * L;
+  R.tebal_pelat_alas_haluan = function (a, b, pSL, k) {
+    const f2 = R.faktor_rasio_aspek_f2(a, b), ta = 0.9 * f2 * a * sqrt(pSL * k);
+    const [t, tK] = R.tebal_dengan_korosi(ta, k);
+    return { f2, t_aksen: ta, tK, t_perlu: t };
+  };
+  R.penegar_alas_haluan = (pSL, a, l, k) => ({ W: 0.155 * pSL * a * l * l * k, A: 0.028 * pSL * a * (l - 0.5 * a) * k });
+  R.penguatan_kapal_tunda = function (D, k, lp = null) {
+    const Pf = min(max(D / 100, 200), 1000), ta = 0.65 * sqrt(Pf * k);
+    const [t, tK] = R.tebal_dengan_korosi(ta, k);
+    const h = { Pf, t_aksen: ta, tK, t_perlu: t };
+    if (lp) h.W_pembujur = 0.35 * Pf * lp * k;
+    return h;
+  };
+  R.tebal_kubu_kubu = function (L) { const Lx = min(L, 200); return Lx <= 100 ? (0.75 - Lx / 1000) * sqrt(Lx) : 0.65 * sqrt(Lx); };
+  R.modulus_stay_kubu_kubu = (p, e, l) => 4 * max(p, 15) * e * l * l;
+  R.tebal_min_geladak_kekuatan = (L, k) => (4.5 + 0.05 * min(L, 200)) * sqrt(k);
+  R.tebal_geladak_kekuatan = function (L, a, pD, k, pL = null, daerah = "M") {
+    const tE1a = 1.21 * a * sqrt(pD * k);
+    const [tE1, tK1] = R.tebal_dengan_korosi(tE1a, k);
+    let tE2 = 0;
+    if (pL) tE2 = R.tebal_dengan_korosi(1.1 * a * sqrt(pL * k), k)[0];
+    const tEmin = (5.5 + 0.02 * min(L, 200)) * sqrt(k), tE = max(tE1, tE2, tEmin);
+    const h = { "tE1'": tE1a, tK: tK1, tE1, tE2, tEmin, tE };
+    if (daerah === "M") { h.tmin = R.tebal_min_geladak_kekuatan(L, k); h.t_perlu = max(h.tmin, tE); }
+    else h.t_perlu = tE;
+    return h;
+  };
+  R.tebal_kritis_tcrit = function (a, sLB, ReH, c = 0.5) {
+    if (sLB <= 0.6 * ReH) return c * 2.23 * a * sqrt(sLB);
+    return c * 1.57 * a * sqrt(ReH / (1.474 - ReH / sLB));
+  };
+  R.tebal_geladak_bawah = function (L, a, pL, k, ke2 = true) {
+    const ta = 1.21 * a * sqrt(pL * k), [t, tK] = R.tebal_dengan_korosi(ta, k);
+    const tmin = ke2 ? (5.5 + 0.02 * min(L, 200)) * sqrt(k) : 6.0;
+    return { t_aksen: ta, tK, t_rumus: t, tmin, t_perlu: max(t, tmin) };
+  };
+  R.lubang_geladak_jari_jari = function (lp, bp, B) {
+    const n = min(max(lp / 200, 0.1), 0.25), bB = max(bp / B, 0.4);
+    return max(n * bp * (1 - bB), 0.1);
+  };
+  R.tinggi_dasar_ganda_min = B => min(max(B / 20 * 1000, 760), 2000);
+  R.penumpu_tengah_dasar_ganda = function (B, k, ha_mm = null, lw = null) {
+    const l = lw === null ? B : lw, h = max(350 + 45 * l, 600), ha = ha_mm || h;
+    const tm = h <= 1200 ? (h / ha) * (h / 100 + 1) * sqrt(k) : (h / ha) * (h / 120 + 3) * sqrt(k);
+    return { h_mm: h, ha_mm: ha, tm };
+  };
+  R.penumpu_samping_dasar_ganda = function (h, k, ha_mm = null) { const ha = max(ha_mm || h, h); return h * h / (120 * ha) * sqrt(k); };
+  R.jumlah_penumpu_samping = function (B) { const d = B / 2; return d > 10.5 ? 3 : d > 8 ? 2 : d > 4.5 ? 1 : 0; };
+  R.alas_dalam = function (a, T, hDB, k, pi = null, hpl = null, tanpa_ceiling = false) {
+    const p1 = 10 * (T - hDB), p2 = hpl ? 10 * hpl : 0, p3 = pi || 0, p = max(p1, p2, p3);
+    const ta = 1.1 * a * sqrt(p * k), [t, tK] = R.tebal_dengan_korosi(ta, k);
+    const tam = (tanpa_ceiling && (p === p1 || p === p2)) ? 2 : 0;
+    return { p1, p2, p3, p, t_aksen: ta, tK, tambahan_ceiling: tam, t_perlu: t + tam };
+  };
+  R.wrang_pelat_dasar_ganda = function (tm, T, B, e, k, kosong = false, l = null) {
+    const t = min((tm - 2) * sqrt(k), 16); l = l === null ? B : l;
+    const eps = kosong ? 0.5 : 0.3;
+    return { t, eps, Aw_tumpuan: eps * T * l * e * k, "Aw_0.4l": eps * T * l * e * (1 - 2 * 0.4) * k };
+  };
+  R.wrang_terbuka_modulus = (n, a, l, p, k, strut = false) => n * (strut ? 0.6 : 1.0) * a * l * l * p * k;
+  R.tebal_penumpu_memanjang_alas = (L, k) => max((5 + 0.03 * L) * sqrt(k), 6 * sqrt(k));
+  R.alas_tunggal = function (B, T, e, l, k, kosong = false) {
+    const c = kosong ? 7.5 : 4.5, h = max(55 * B - 45, 180);
+    return { W_wrang: c * T * e * l * l, h_wrang_mm: h, t_wrang: h / 100 + 3 };
+  };
+  R.penumpu_alas_tunggal = L => ({ tengah_tw: 0.07 * L + 5.5, tengah_Af: 0.7 * L + 12, samping_tw: 0.04 * L + 5, samping_Af: 0.2 * L + 6 });
+  R.wrang_ceruk = (L, H) => ({ t: 0.035 * L + 5, h_ceruk_haluan_m: 0.06 * H + 0.7 });
+  R.gading_utama = function (L, a, l, p, k, lKu = 0, lKo = 0, cr = 1) {
+    const n = L < 100 ? 0.9 - 0.0035 * L : 0.55, c = max(1 - (lKu / l + 0.4 * lKo / l), 0.6), ma = R.faktor_ma(a, l);
+    return {
+      n, c, ma, W: n * c * (1 - ma * ma) * cr * a * l * l * p * k, W_braket_bawah: n * (1 - ma * ma) * cr * a * l * l * p * k,
+      ARO: (1 - 0.817 * ma) * 0.04 * a * l * p * k, ARU: (1 - 0.817 * ma) * 0.07 * a * l * p * k
+    };
+  };
+  R.gading_antara_bangunan_atas = function (a, l, p, k, cr = 1, mk = 1, pL = null, l_balok = null, transv = false, e = null) {
+    let pmin = 0;
+    if (pL && l_balok) { pmin = 0.4 * pL * pow(l_balok / l, 2); if (transv && e) pmin *= max(0.75 + 0.2 * e / a, 1); }
+    const pd = max(p, pmin), m = R.faktor_m(a, l, mk), ma = R.faktor_ma(a, l);
+    return { pmin, p_desain: pd, m, W: 0.55 * m * a * l * l * pd * cr * k, A: (1 - 0.817 * ma) * 0.05 * a * l * pd * k };
+  };
+  R.gading_besar_kamar_mesin = function (e, l, ps, k, H, Hu) {
+    const W = 0.8 * e * l * l * ps * k, ci = 1 + (Hu - 4) * 0.07;
+    const I = H <= 10 ? H * (4.5 * H - 3.5) * ci * 100 : H * (7.25 * H - 31) * ci * 100;
+    const h = max(50 * H, 250), t = max(h / (32 + 0.03 * h), 8);
+    return { W, I, ci, h_web_mm: h, t_web_mm: t };
+  };
+  R.gading_besar_senta_ceruk = function (e, l, l1, p, k, n = 0) {
+    const nc = ({ 0: 1.0, 1: 0.5, 2: 0.3, 3: 0.3 })[n] ?? 0.2;
+    return { nc, W: 0.55 * e * l * l * p * nc * k, Aw: 0.05 * e * l1 * p * k };
+  };
+  R.pelat_senta_tier_balok = L => ({ b_mm: 75 * sqrt(L), t_mm: 6 + L / 40 });
+  R.pembujur = function (L, a, l, p, k, sL, mk = 1, sisi = false, ps1 = null) {
+    const sp = min((0.8 + L / 450) * 230 / k, 230 / k), spr = min(sp - abs(sL), 150 / k);
+    const m = R.faktor_m(a, l, mk), ma = R.faktor_ma(a, l);
+    const h = { sigma_perm: sp, sigma_pr: spr, m, W: 83.3 / spr * m * a * l * l * p, A: (1 - 0.817 * ma) * 0.05 * a * l * p * k };
+    if (sisi && ps1) {
+      const Wm = 83 / (230 / k - abs(sL)) * m * a * l * l * ps1, Am = (1 - 0.817 * ma) * 0.037 * a * l * ps1 * k;
+      h.Wmin_ps1 = Wm; h.Amin_ps1 = Am; h.W = max(h.W, Wm); h.A = max(h.A, Am);
+    }
+    return h;
+  };
+  R.gading_besar_sisi = (e, l, p, k) => ({ W: 0.55 * e * l * l * p * k, Aw: 0.05 * e * l * p * k });
+  R.gaya_fender_Pf = function (D) { D = min(D, 100000); return D <= 2100 ? 0.08 * D : D <= 17000 ? 170 : D / 100; };
+  R.balok_geladak = function (a, l, p, k, mk = 1, bebas = false) {
+    const c = bebas ? 0.75 : 0.55, m = R.faktor_m(a, l, mk), ma = R.faktor_ma(a, l);
+    return { c, m, W: c * m * a * p * l * l * k, A: (1 - 0.817 * ma) * 0.05 * a * l * p * k };
+  };
+  R.penumpu_geladak = function (e, l, p, k, tump = "jepit_keduanya") {
+    const c = tump === "jepit_keduanya" ? 0.55 : 0.75, cI = ({ bebas: 4, jepit_satu: 2, jepit_keduanya: 1.5 })[tump];
+    const W = c * e * l * l * p * k;
+    return { c, W, Aw: 0.05 * p * e * l * k, I: cI * W * l, h_min_mm: l / 25 * 1000 };
+  };
+  R.pilar = function (Ps, lp, ReH = 235, akomodasi = false, tipe = "pipa", da_mm = null, t_mm = null) {
+    const E = 2.06e5, S = akomodasi ? 1.66 : 2.0, np = (tipe === "pipa" || tipe === "persegi") ? 0.34 : 0.49;
+    const h = { Ps, S };
+    if (da_mm && t_mm) {
+      const da = da_mm / 10, di = (da_mm - 2 * t_mm) / 10, As = Math.PI / 4 * (da * da - di * di);
+      const is = 0.25 * sqrt(da * da + di * di);
+      const lam = max(lp * 100 / (is * Math.PI) * sqrt(ReH / E), 0.2);
+      const phi = 0.5 * (1 + np * (lam - 0.2) + lam * lam), kappa = 1 / (phi + sqrt(phi * phi - lam * lam));
+      const sp = kappa / S * ReH, Asr = 10 * Ps / sp, tw = da_mm <= 300 ? 4.5 + 0.015 * da_mm : 0.03 * da_mm;
+      Object.assign(h, { As, is, lambda: lam, kappa, sigma_p: sp, As_perlu: Asr, tw_min: tw, OK: As >= Asr && t_mm >= tw });
+    }
+    return h;
+  };
+  R.sekat_kedap_air = function (a, l, hp, hs, ReH, k, tubrukan = false, tump = "jepit_bebas", mk = 1, pcur = null) {
+    const f = 235 / ReH, cp = (tubrukan ? 1.1 : 0.9) * sqrt(f);
+    const tb = { jepit_keduanya: [0.33, 0.265], jepit_bebas: [0.45, 0.36], bebas_keduanya: [0.66, 0.53] };
+    const cs = tb[tump][tubrukan ? 0 : 1] * f;
+    const pp = pcur || 9.81 * hp, pn = pcur || 9.81 * hs;
+    const ta = cp * a * sqrt(pp), [t, tK] = R.tebal_dengan_korosi(ta, k), tmin = 6 * sqrt(f);
+    const m = R.faktor_m(a, l, mk);
+    return { f, cp, cs, p_pelat: pp, t_aksen: ta, tK, tmin, t_perlu: max(t, tmin), p_penegar: pn, m, W: cs * m * a * l * l * pn };
+  };
+  R.tebal_min_tangki = function (L, jenis = "ballast") {
+    let t = 5.5 + 0.02 * L;
+    if (["bbm", "minyak_lumas", "air_tawar"].includes(jenis)) t = min(t, 7.5); else if (jenis === "ballast") t = min(t, 9.0);
+    return t;
+  };
+  R.konstruksi_tangki = function (L, a, l, p, p2, k, mk = 1, bebas = false, girder = false, jenis = "ballast") {
+    const t1 = R.tebal_dengan_korosi(1.1 * a * sqrt(p * k), k)[0], t2 = R.tebal_dengan_korosi(0.9 * a * sqrt(p2 * k), k)[0];
+    const tmin = R.tebal_min_tangki(L, jenis);
+    const m = girder ? 1 : R.faktor_m(a, l, mk), ma = girder ? 0 : R.faktor_ma(a, l), f = bebas ? 1.5 : 1;
+    const W1 = 0.55 * m * a * l * l * p * k * f, W2 = 0.44 * m * a * l * l * p2 * k * f;
+    const Aw1 = (1 - 0.817 * ma) * 0.05 * a * l * p * k, Aw2 = (1 - 0.817 * ma) * 0.04 * a * l * p2 * k;
+    return { t1, t2, tmin, t_perlu: max(t1, t2, tmin), W1, W2, W: max(W1, W2), Aw1, Aw2, Aw: max(Aw1, Aw2) };
+  };
+  R.braket = function (W, k1 = 1, k2 = 1, berflens = false, twp = null) {
+    const c = berflens ? 0.95 : 1.2, ta = c * pow(W / k1, 1 / 3);
+    let [t, tK] = R.tebal_dengan_korosi(ta, k1);
+    t = max(t, 5 + tK); if (twp) t = min(t, twp);
+    return { t, l_mm: max(46.2 * pow(W / k1, 1 / 3) * sqrt(k2), 100), b_flens_mm: min(max(40 + W / 30, 50), 90) };
+  };
+  R.linggi_haluan = function (L, k, aB = 0.6) {
+    return { Ab_batang_cm2: 1.25 * L, t_pelat_linggi: min((0.6 + 0.4 * aB) * (0.08 * L + 6) * sqrt(k), 25 * sqrt(k)), l_pelat_mm: 70 * sqrt(L) };
+  };
+  R.pelat_sisi_bangunan_atas = function (a, p, k, tmin_alas) {
+    const ta = 1.21 * a * sqrt(p * k), [t, tK] = R.tebal_dengan_korosi(ta, k, "bangunan_atas");
+    return { t_aksen: ta, tK, t_rumus: t, tmin: 0.8 * tmin_alas, t_perlu: max(t, 0.8 * tmin_alas) };
+  };
+  R.pelat_geladak_bangunan_atas = function (L, a, pDA, k, pL = null) {
+    const ta = max(1.21 * a * sqrt(pDA * k), pL ? 1.1 * a * sqrt(pL * k) : 0);
+    const [t, tK] = R.tebal_dengan_korosi(ta, k, "bangunan_atas"), tmin = (5.5 + 0.02 * min(L, 200)) * sqrt(k);
+    return { t_aksen: ta, tK, t_rumus: t, tmin, t_perlu: max(t, tmin) };
+  };
+  R.beban_dinding_rumah_geladak_pA = function (L, CB, x, z, b_r, B_l, tingkat, posisi) {
+    const Lx = min(L, 300), xL = x / L;
+    let f;
+    if (Lx < 150) f = Lx / 10 * Math.exp(-Lx / 300) - (1 - pow(Lx / 150, 2));
+    else if (Lx < 300) f = Lx / 10 * Math.exp(-Lx / 300);
+    else f = 11.03;
+    let n;
+    if (posisi === "depan" && tingkat === 1) n = 20 + Lx / 12;
+    else if (posisi === "depan" && tingkat === 2) n = 10 + Lx / 12;
+    else if (posisi === "belakang") n = xL <= 0.5 ? 7 + Lx / 100 - 8 * xL : 5 + Lx / 100 - 4 * xL;
+    else n = 5 + Lx / 15;
+    let CBx = min(max(CB, 0.6), 0.8);
+    if (posisi === "belakang" && xL > 0.5) CBx = 0.8;
+    const b = xL < 0.45 ? 1 + pow((xL - 0.45) / (CBx + 0.2), 2) : 1 + 1.5 * pow((xL - 0.45) / (CBx + 0.2), 2);
+    const c = 0.3 + 0.7 * max(b_r / B_l, 0.25);
+    const pA = n * c * (b * f - z);
+    let p1, pl;
+    if (Lx <= 50) { p1 = 30; pl = 15; }
+    else if (Lx <= 250) { p1 = 25 + Lx / 10; pl = tingkat <= 3 ? 12.5 + Lx / 20 : tingkat === 4 ? 12.5 : 8.5; }
+    else { p1 = 50; pl = 25; }
+    const pmin = (posisi === "depan" && tingkat === 1) ? p1 : pl;
+    return { f, n, b, c, pA_rumus: pA, pAmin: pmin, pA: max(pA, pmin) };
+  };
+  R.dinding_rumah_geladak = function (L, a, l, pA, k, tingkat) {
+    l = max(l, 2.0);
+    const W = 0.35 * a * l * l * pA * k, ta = 0.9 * a * sqrt(pA * k), [t, tK] = R.tebal_dengan_korosi(ta, k, "bangunan_atas");
+    const Lx = min(L, 300);
+    let tmin;
+    if (L < 65) tmin = tingkat === 1 ? 5 : 4;
+    else if (tingkat === 1) tmin = (5 + Lx / 100) * sqrt(k);
+    else tmin = max((4 + Lx / 100) * sqrt(k), 5);
+    return { W, t_aksen: ta, tK, tmin, t_perlu: max(t, tmin) };
+  };
+
+  // ================================ profil ===================================
+  const P = {};
+  P.KATALOG_L = [{"nama": "L 50x50x4", "h": 50, "b": 50, "t": 4, "tf": 4, "r1": 6.5, "A": 3.892, "massa": 3.06, "seri": "sama kaki"}, {"nama": "L 50x50x5", "h": 50, "b": 50, "t": 5, "tf": 5, "r1": 6.5, "A": 4.802, "massa": 3.77, "seri": "sama kaki"}, {"nama": "L 50x50x6", "h": 50, "b": 50, "t": 6, "tf": 6, "r1": 6.5, "A": 5.644, "massa": 4.43, "seri": "sama kaki"}, {"nama": "L 60x60x4", "h": 60, "b": 60, "t": 4, "tf": 4, "r1": 6.5, "A": 4.692, "massa": 3.68, "seri": "sama kaki"}, {"nama": "L 60x60x5", "h": 60, "b": 60, "t": 5, "tf": 5, "r1": 6.5, "A": 5.802, "massa": 4.55, "seri": "sama kaki"}, {"nama": "L 65x65x5", "h": 65, "b": 65, "t": 5, "tf": 5, "r1": 8.5, "A": 6.367, "massa": 5, "seri": "sama kaki"}, {"nama": "L 65x65x6", "h": 65, "b": 65, "t": 6, "tf": 6, "r1": 8.5, "A": 7.527, "massa": 5.91, "seri": "sama kaki"}, {"nama": "L 65x65x8", "h": 65, "b": 65, "t": 8, "tf": 8, "r1": 8.5, "A": 9.761, "massa": 7.66, "seri": "sama kaki"}, {"nama": "L 70x70x6", "h": 70, "b": 70, "t": 6, "tf": 6, "r1": 8.5, "A": 8.127, "massa": 6.38, "seri": "sama kaki"}, {"nama": "L 75x75x6", "h": 75, "b": 75, "t": 6, "tf": 6, "r1": 8.5, "A": 8.727, "massa": 6.85, "seri": "sama kaki"}, {"nama": "L 75x75x9", "h": 75, "b": 75, "t": 9, "tf": 9, "r1": 8.5, "A": 12.69, "massa": 9.96, "seri": "sama kaki"}, {"nama": "L 75x75x12", "h": 75, "b": 75, "t": 12, "tf": 12, "r1": 8.5, "A": 16.56, "massa": 13, "seri": "sama kaki"}, {"nama": "L 80x80x6", "h": 80, "b": 80, "t": 6, "tf": 6, "r1": 8.5, "A": 9.327, "massa": 7.32, "seri": "sama kaki"}, {"nama": "L 90x90x6", "h": 90, "b": 90, "t": 6, "tf": 6, "r1": 10, "A": 10.55, "massa": 8.28, "seri": "sama kaki"}, {"nama": "L 90x90x7", "h": 90, "b": 90, "t": 7, "tf": 7, "r1": 10, "A": 12.22, "massa": 9.59, "seri": "sama kaki"}, {"nama": "L 90x90x10", "h": 90, "b": 90, "t": 10, "tf": 10, "r1": 10, "A": 17, "massa": 13.3, "seri": "sama kaki"}, {"nama": "L 90x90x13", "h": 90, "b": 90, "t": 13, "tf": 13, "r1": 10, "A": 21.71, "massa": 17, "seri": "sama kaki"}, {"nama": "L 100x100x7", "h": 100, "b": 100, "t": 7, "tf": 7, "r1": 10, "A": 13.62, "massa": 10.7, "seri": "sama kaki"}, {"nama": "L 100x100x10", "h": 100, "b": 100, "t": 10, "tf": 10, "r1": 10, "A": 19, "massa": 14.9, "seri": "sama kaki"}, {"nama": "L 100x100x13", "h": 100, "b": 100, "t": 13, "tf": 13, "r1": 10, "A": 24.31, "massa": 19.1, "seri": "sama kaki"}, {"nama": "L 120x120x8", "h": 120, "b": 120, "t": 8, "tf": 8, "r1": 12, "A": 18.76, "massa": 14.7, "seri": "sama kaki"}, {"nama": "L 130x130x9", "h": 130, "b": 130, "t": 9, "tf": 9, "r1": 12, "A": 22.74, "massa": 17.9, "seri": "sama kaki"}, {"nama": "L 130x130x12", "h": 130, "b": 130, "t": 12, "tf": 12, "r1": 12, "A": 29.76, "massa": 23.4, "seri": "sama kaki"}, {"nama": "L 130x130x15", "h": 130, "b": 130, "t": 15, "tf": 15, "r1": 12, "A": 36.75, "massa": 28.8, "seri": "sama kaki"}, {"nama": "L 150x150x12", "h": 150, "b": 150, "t": 12, "tf": 12, "r1": 14, "A": 34.77, "massa": 27.3, "seri": "sama kaki"}, {"nama": "L 150x150x15", "h": 150, "b": 150, "t": 15, "tf": 15, "r1": 14, "A": 42.74, "massa": 33.6, "seri": "sama kaki"}, {"nama": "L 150x150x19", "h": 150, "b": 150, "t": 19, "tf": 19, "r1": 14, "A": 53.38, "massa": 41.9, "seri": "sama kaki"}, {"nama": "L 175x175x12", "h": 175, "b": 175, "t": 12, "tf": 12, "r1": 15, "A": 40.52, "massa": 31.8, "seri": "sama kaki"}, {"nama": "L 175x175x15", "h": 175, "b": 175, "t": 15, "tf": 15, "r1": 15, "A": 50.21, "massa": 39.4, "seri": "sama kaki"}, {"nama": "L 200x200x15", "h": 200, "b": 200, "t": 15, "tf": 15, "r1": 17, "A": 57.75, "massa": 45.3, "seri": "sama kaki"}, {"nama": "L 200x200x20", "h": 200, "b": 200, "t": 20, "tf": 20, "r1": 17, "A": 76, "massa": 59.7, "seri": "sama kaki"}, {"nama": "L 200x200x25", "h": 200, "b": 200, "t": 25, "tf": 25, "r1": 17, "A": 93.75, "massa": 73.6, "seri": "sama kaki"}, {"nama": "L 250x250x25", "h": 250, "b": 250, "t": 25, "tf": 25, "r1": 24, "A": 119.4, "massa": 93.7, "seri": "sama kaki"}, {"nama": "L 250x250x35", "h": 250, "b": 250, "t": 35, "tf": 35, "r1": 24, "A": 162.6, "massa": 128, "seri": "sama kaki"}, {"nama": "L 90x75x9", "h": 90, "b": 75, "t": 9, "tf": 9, "r1": 8.5, "A": 14.04, "massa": 11, "seri": "tidak sama kaki"}, {"nama": "L 100x75x7", "h": 100, "b": 75, "t": 7, "tf": 7, "r1": 10, "A": 11.87, "massa": 9.32, "seri": "tidak sama kaki"}, {"nama": "L 100x75x10", "h": 100, "b": 75, "t": 10, "tf": 10, "r1": 10, "A": 16.5, "massa": 13, "seri": "tidak sama kaki"}, {"nama": "L 125x75x7", "h": 125, "b": 75, "t": 7, "tf": 7, "r1": 10, "A": 13.62, "massa": 10.7, "seri": "tidak sama kaki"}, {"nama": "L 125x75x10", "h": 125, "b": 75, "t": 10, "tf": 10, "r1": 10, "A": 19, "massa": 14.9, "seri": "tidak sama kaki"}, {"nama": "L 125x75x13", "h": 125, "b": 75, "t": 13, "tf": 13, "r1": 10, "A": 24.31, "massa": 19.1, "seri": "tidak sama kaki"}, {"nama": "L 125x90x10", "h": 125, "b": 90, "t": 10, "tf": 10, "r1": 10, "A": 20.5, "massa": 16.1, "seri": "tidak sama kaki"}, {"nama": "L 125x90x13", "h": 125, "b": 90, "t": 13, "tf": 13, "r1": 10, "A": 26.26, "massa": 20.6, "seri": "tidak sama kaki"}, {"nama": "L 150x90x9", "h": 150, "b": 90, "t": 9, "tf": 9, "r1": 12, "A": 20.94, "massa": 16.4, "seri": "tidak sama kaki"}, {"nama": "L 150x90x12", "h": 150, "b": 90, "t": 12, "tf": 12, "r1": 12, "A": 27.36, "massa": 21.5, "seri": "tidak sama kaki"}, {"nama": "L 150x100x9", "h": 150, "b": 100, "t": 9, "tf": 9, "r1": 12, "A": 21.84, "massa": 17.1, "seri": "tidak sama kaki"}, {"nama": "L 150x100x12", "h": 150, "b": 100, "t": 12, "tf": 12, "r1": 12, "A": 28.56, "massa": 22.4, "seri": "tidak sama kaki"}, {"nama": "L 150x100x15", "h": 150, "b": 100, "t": 15, "tf": 15, "r1": 12, "A": 35.25, "massa": 27.7, "seri": "tidak sama kaki"}, {"nama": "L 200x90x9/14", "h": 200, "b": 90, "t": 9, "tf": 14, "r1": 14, "A": 29.66, "massa": 23.3, "seri": "tak sama tebal (kapal)"}, {"nama": "L 250x90x10/15", "h": 250, "b": 90, "t": 10, "tf": 15, "r1": 17, "A": 37.47, "massa": 29.4, "seri": "tak sama tebal (kapal)"}, {"nama": "L 250x90x12/16", "h": 250, "b": 90, "t": 12, "tf": 16, "r1": 17, "A": 42.95, "massa": 33.7, "seri": "tak sama tebal (kapal)"}, {"nama": "L 300x90x11/16", "h": 300, "b": 90, "t": 11, "tf": 16, "r1": 19, "A": 46.22, "massa": 36.3, "seri": "tak sama tebal (kapal)"}, {"nama": "L 300x90x13/17", "h": 300, "b": 90, "t": 13, "tf": 17, "r1": 19, "A": 52.67, "massa": 41.3, "seri": "tak sama tebal (kapal)"}, {"nama": "L 350x100x12/17", "h": 350, "b": 100, "t": 12, "tf": 17, "r1": 22, "A": 57.74, "massa": 45.3, "seri": "tak sama tebal (kapal)"}, {"nama": "L 400x100x13/18", "h": 400, "b": 100, "t": 13, "tf": 18, "r1": 24, "A": 68.59, "massa": 53.8, "seri": "tak sama tebal (kapal)"}];
+  P.KATALOG_T = [{"nama": "T 75x75x5x7", "d": 75, "b": 75, "tw": 5, "tf": 7, "r": 8, "massa": 7.0, "asal": "H 150x75x5x7"}, {"nama": "T 75x150x7x10", "d": 75, "b": 150, "tw": 7, "tf": 10, "r": 8, "massa": 15.55, "asal": "H 150x150x7x10"}, {"nama": "T 87.5x90x5x8", "d": 87.5, "b": 90, "tw": 5, "tf": 8, "r": 8, "massa": 9.0, "asal": "H 175x90x5x8"}, {"nama": "T 87.5x175x7.5x11", "d": 87.5, "b": 175, "tw": 7.5, "tf": 11, "r": 13, "massa": 20.2, "asal": "H 175x175x7.5x11"}, {"nama": "T 99x99x4.5x7", "d": 99, "b": 99, "tw": 4.5, "tf": 7, "r": 8, "massa": 8.9, "asal": "H 198x99x4.5x7"}, {"nama": "T 100x100x5.5x8", "d": 100, "b": 100, "tw": 5.5, "tf": 8, "r": 8, "massa": 10.45, "asal": "H 200x100x5.5x8"}, {"nama": "T 97x150x6x9", "d": 97, "b": 150, "tw": 6, "tf": 9, "r": 8, "massa": 14.95, "asal": "H 194x150x6x9"}, {"nama": "T 100x200x8x12", "d": 100, "b": 200, "tw": 8, "tf": 12, "r": 13, "massa": 24.95, "asal": "H 200x200x8x12"}, {"nama": "T 124x124x5x8", "d": 124, "b": 124, "tw": 5, "tf": 8, "r": 8, "massa": 12.55, "asal": "H 248x124x5x8"}, {"nama": "T 125x125x6x9", "d": 125, "b": 125, "tw": 6, "tf": 9, "r": 8, "massa": 14.5, "asal": "H 250x125x6x9"}, {"nama": "T 122x175x7x11", "d": 122, "b": 175, "tw": 7, "tf": 11, "r": 13, "massa": 21.8, "asal": "H 244x175x7x11"}, {"nama": "T 125x250x9x14", "d": 125, "b": 250, "tw": 9, "tf": 14, "r": 13, "massa": 35.9, "asal": "H 250x250x9x14"}, {"nama": "T 149x149x5.5x8", "d": 149, "b": 149, "tw": 5.5, "tf": 8, "r": 13, "massa": 16.0, "asal": "H 298x149x5.5x8"}, {"nama": "T 150x150x6.5x9", "d": 150, "b": 150, "tw": 6.5, "tf": 9, "r": 13, "massa": 18.35, "asal": "H 300x150x6.5x9"}, {"nama": "T 147x200x8x12", "d": 147, "b": 200, "tw": 8, "tf": 12, "r": 13, "massa": 27.9, "asal": "H 294x200x8x12"}, {"nama": "T 149x201x9x14", "d": 149, "b": 201, "tw": 9, "tf": 14, "r": 13, "massa": 32.2, "asal": "H 298x201x9x14"}, {"nama": "T 150x300x10x15", "d": 150, "b": 300, "tw": 10, "tf": 15, "r": 13, "massa": 46.5, "asal": "H 300x300x10x15"}, {"nama": "T 173x174x6x9", "d": 173, "b": 174, "tw": 6, "tf": 9, "r": 13, "massa": 20.6, "asal": "H 346x174x6x9"}, {"nama": "T 175x175x7x11", "d": 175, "b": 175, "tw": 7, "tf": 11, "r": 13, "massa": 24.7, "asal": "H 350x175x7x11"}, {"nama": "T 168x249x8x12", "d": 168, "b": 249, "tw": 8, "tf": 12, "r": 13, "massa": 33.8, "asal": "H 336x249x8x12"}, {"nama": "T 170x250x9x14", "d": 170, "b": 250, "tw": 9, "tf": 14, "r": 13, "massa": 39.05, "asal": "H 340x250x9x14"}, {"nama": "T 175x350x12x19", "d": 175, "b": 350, "tw": 12, "tf": 19, "r": 13, "massa": 67.5, "asal": "H 350x350x12x19"}, {"nama": "T 198x199x7x11", "d": 198, "b": 199, "tw": 7, "tf": 11, "r": 13, "massa": 28.05, "asal": "H 396x199x7x11"}, {"nama": "T 200x200x8x13", "d": 200, "b": 200, "tw": 8, "tf": 13, "r": 13, "massa": 32.7, "asal": "H 400x200x8x13"}, {"nama": "T 193x299x9x14", "d": 193, "b": 299, "tw": 9, "tf": 14, "r": 13, "massa": 46.1, "asal": "H 386x299x9x14"}, {"nama": "T 195x300x10x16", "d": 195, "b": 300, "tw": 10, "tf": 16, "r": 13, "massa": 52.5, "asal": "H 390x300x10x16"}, {"nama": "T 200x400x13x21", "d": 200, "b": 400, "tw": 13, "tf": 21, "r": 22, "massa": 85.85, "asal": "H 400x400x13x21"}, {"nama": "T 223x199x8x12", "d": 223, "b": 199, "tw": 8, "tf": 12, "r": 13, "massa": 32.55, "asal": "H 446x199x8x12"}, {"nama": "T 225x200x9x14", "d": 225, "b": 200, "tw": 9, "tf": 14, "r": 13, "massa": 37.45, "asal": "H 450x200x9x14"}, {"nama": "T 217x299x10x15", "d": 217, "b": 299, "tw": 10, "tf": 15, "r": 13, "massa": 51.5, "asal": "H 434x299x10x15"}, {"nama": "T 220x300x11x18", "d": 220, "b": 300, "tw": 11, "tf": 18, "r": 13, "massa": 60.5, "asal": "H 440x300x11x18"}, {"nama": "T 248x199x9x14", "d": 248, "b": 199, "tw": 9, "tf": 14, "r": 13, "massa": 38.95, "asal": "H 496x199x9x14"}, {"nama": "T 250x200x10x16", "d": 250, "b": 200, "tw": 10, "tf": 16, "r": 13, "massa": 44.1, "asal": "H 500x200x10x16"}, {"nama": "T 241x300x11x15", "d": 241, "b": 300, "tw": 11, "tf": 15, "r": 13, "massa": 55.5, "asal": "H 482x300x11x15"}, {"nama": "T 244x300x11x18", "d": 244, "b": 300, "tw": 11, "tf": 18, "r": 13, "massa": 62.5, "asal": "H 488x300x11x18"}, {"nama": "T 298x199x10x15", "d": 298, "b": 199, "tw": 10, "tf": 15, "r": 13, "massa": 46.25, "asal": "H 596x199x10x15"}, {"nama": "T 300x200x11x17", "d": 300, "b": 200, "tw": 11, "tf": 17, "r": 13, "massa": 51.5, "asal": "H 600x200x11x17"}, {"nama": "T 291x300x12x17", "d": 291, "b": 300, "tw": 12, "tf": 17, "r": 13, "massa": 66.5, "asal": "H 582x300x12x17"}, {"nama": "T 294x300x12x20", "d": 294, "b": 300, "tw": 12, "tf": 20, "r": 13, "massa": 73.5, "asal": "H 588x300x12x20"}];
+  P.KATALOG_PIPA = [[76.3, 5.2], [89.1, 5.5], [101.6, 5.7], [114.3, 6.0], [139.8, 6.6], [165.2, 7.1],
+    [190.7, 7.0], [216.3, 8.2], [267.4, 9.3], [318.5, 10.3], [355.6, 11.1], [406.4, 12.7]];
+  const CW = { L: 75, T: 75, FB: 22 }, CF = 12, CWP = 100;
+  P.tebal_bersih = t => t - (t <= 11.5 ? 1.5 : min((t - 0.5) / 1.1 * 0.1 + 0.5, 3.0));
+  P.sifat_penampang = function (ps) {
+    let A = 0, Sy = 0;
+    for (const [b, h, y] of ps) { A += b * h; Sy += b * h * (y + h / 2); }
+    const yna = Sy / A;
+    let I = 0, ya = 0;
+    for (const [b, h, y] of ps) { I += b * h * h * h / 12 + b * h * pow(y + h / 2 - yna, 2); ya = max(ya, y + h); }
+    const Wmin = I / max(yna, ya - yna), Wf = I / (ya - yna);
+    return { A_cm2: A / 100, I_cm4: I / 1e4, W_cm3: min(Wmin, Wf) / 1e3, yna_mm: yna };
+  };
+  P.penampang_L = (h, b, t, tp, be, tf) => { tf = tf || t; return [[be, tp, 0], [t, h - tf, tp], [b, tf, tp + h - tf]]; };
+  P.penampang_FB = (h, t, tp, be) => [[be, tp, 0], [t, h, tp]];
+  P.penampang_T = (hw, tw, bf, tf, tp, be) => [[be, tp, 0], [tw, hw, tp], [bf, tf, tp + hw]];
+  function cmpTuple(a, b) {   // perbandingan tuple ala Python
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      if (a[i] < b[i]) return -1; if (a[i] > b[i]) return 1;
+    }
+    return a.length - b.length;
+  }
+  function minTuple(arr) { let m = arr[0]; for (const x of arr) if (cmpTuple(x, m) < 0) m = x; return m; }
+  P.penampang_Tc = (d, b, tw, tf, tp, be) => [[be, tp, 0], [tw, d - tf, tp], [b, tf, tp + d - tf]];
+  P.lebar_flens_efektif = function (it, k = 1) {
+    const batas = CF * P.tebal_bersih(it.tf) * sqrt(k);
+    if (it.d !== undefined) return it.tw + 2 * min((it.b - it.tw) / 2, batas);
+    return it.t + min(it.b - it.t, batas);
+  };
+  P.sifat_katalog = function (it, tp, be, k = 1) {
+    const bf = P.lebar_flens_efektif(it, k);
+    let s;
+    if (it.d !== undefined) { s = P.sifat_penampang(P.penampang_Tc(it.d, bf, it.tw, it.tf, tp, be)); s.A_geser = it.d * it.tw / 100; }
+    else { s = P.sifat_penampang(P.penampang_L(it.h, bf, it.t, tp, be, it.tf)); s.A_geser = it.h * it.t / 100; }
+    s.bf_efektif = bf;
+    return s;
+  };
+  P.lolos_kelangsingan = function (it, k = 1, penumpu = false) {
+    if (it.d !== undefined) return P.tebal_bersih(it.tw) >= (it.d - it.tf) / (penumpu ? CWP : CW.T) / sqrt(k);
+    return P.tebal_bersih(it.t) >= it.h / CW.L / sqrt(k);
+  };
+  P.daftar_kandidat = function (W, tp, be, Aq = 0, k = 1, penumpu = false, Iq = 0, hmin = 0, twmin = 0, jenis = ["L", "T"]) {
+    const src = [];
+    if (jenis.includes("L") && !penumpu) for (const it of P.KATALOG_L) src.push(["L", it]);
+    if (jenis.includes("T")) for (const it of P.KATALOG_T) src.push(["T", it]);
+    const out = [];
+    for (const [j, it] of src) {
+      const tinggi = it.d !== undefined ? it.d : it.h, tw = it.tw !== undefined ? it.tw : it.t;
+      if (tinggi < hmin || tw < twmin || !P.lolos_kelangsingan(it, k, penumpu)) continue;
+      if (penumpu && it.b * it.tf > be * tp) continue;
+      const s = P.sifat_katalog(it, tp, be, k);
+      if (s.W_cm3 >= W && s.A_geser >= Aq && s.I_cm4 >= Iq)
+        out.push({ nama: it.nama, jenis: j, W_ada: s.W_cm3, I_ada: s.I_cm4, massa: it.massa, asal: it.asal || it.seri || "" });
+    }
+    out.sort((x, y) => x.massa - y.massa || (x.nama < y.nama ? -1 : x.nama > y.nama ? 1 : 0));
+    return out;
+  };
+  P.pilih_penumpu = function (W, Aw, tp, be, hmin = 0, twmin = 0, Iq = 0, k = 1) {
+    const kd = P.daftar_kandidat(W, tp, be, Aw, k, true, Iq, hmin, twmin, ["T"]);
+    return kd.length ? kd[0] : P.rancang_profil_T(W, Aw, tp, be, hmin, twmin, Iq, true, k);
+  };
+  P.rancang_profil_T = function (W, Aw, tp, be, hmin = 0, twmin = 0, Iq = 0, penumpu = true, k = 1) {
+    const Cw = penumpu ? CWP : CW.T, h0 = max(100, Math.ceil(hmin / 50) * 50);
+    let best = null;
+    for (let hw = h0; hw <= h0 + 1000; hw += 50) {
+      for (const tw of [6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20]) {
+        if (tw < twmin || P.tebal_bersih(tw) < hw / Cw / sqrt(k)) continue;
+        if (hw * tw / 100 < Aw) continue;
+        for (const tf of [8, 10, 12, 14, 15, 16, 18, 20, 22, 25]) {
+          if (tf > 2 * tw) break;
+          for (let bf = max(50, Math.ceil(0.2 * hw / 10) * 10); bf <= 500; bf += 10) {
+            if ((bf - tw) / 2 > CF * P.tebal_bersih(tf) * sqrt(k)) break;
+            if (bf * tf > be * tp) break;
+            const s = P.sifat_penampang(P.penampang_T(hw, tw, bf, tf, tp, be));
+            if (s.W_cm3 >= W && s.I_cm4 >= Iq) {
+              const luas = hw * tw + bf * tf;
+              if (best === null || luas < best[0]) best = [luas, hw, tw, bf, tf, s.W_cm3, s.I_cm4];
+              break;
+            }
+          }
+        }
+      }
+      if (best && hw > best[1] + 200) break;
+    }
+    if (!best) return null;
+    const [luas, hw, tw, bf, tf, Wa, Ia] = best;
+    return { nama: `T bangun ${hw}x${tw} / FP ${bf}x${tf}`, jenis: "T bangun", W_ada: Wa, I_ada: Ia, massa: Math.round(luas / 100 * 0.785 * 100) / 100, luas_profil_cm2: luas / 100, asal: "dilas dari pelat" };
+  };
+  P.pilih_profil = function (W, tp, be, Aq = 0, k = 1) {
+    const kd = P.daftar_kandidat(W, tp, be, Aq, k);
+    return kd.length ? kd[0] : P.rancang_profil_T(W, Aq, tp, be, 150, 0, 0, false, k);
+  };
+  P.pilih_pipa_pilar = function (Ps, lp, ReH, ako) {
+    for (const [da, t] of P.KATALOG_PIPA) { const h = R.pilar(Ps, lp, ReH, ako, "pipa", da, t); if (h.OK) return [da, t, h]; }
+    return [null, null, null];
+  };
+  P.bulatkan_tebal = (t, s = 0.5) => Math.ceil(Math.round(t / s * 1e6) / 1e6) * s;
+
+
+  // ================================ lajur ====================================
+  const LJ = {};
+  LJ.NAMA_JENIS = { lunas: "Lunas", alas: "Alas", bilga: "Bilga", sisi: "Sisi", lajur_atas: "Lajur atas" };
+  LJ.jari_jari_bilga = (B, R) => (R ? R : Math.round(0.08 * B * 100) / 100);
+  LJ.keliling = function (B, H, R) { const d = B / 2 - R, bu = Math.PI * R / 2, si = H - R; return { datar: d, busur: bu, sisi: si, total: d + bu + si }; };
+  LJ.titik = function (s, B, H, R) {
+    const k = LJ.keliling(B, H, R);
+    if (s <= k.datar) return [0, s];
+    if (s <= k.datar + k.busur) { const th = (s - k.datar) / R; return [R * (1 - Math.cos(th)), k.datar + R * Math.sin(th)]; }
+    return [R + (s - k.datar - k.busur), B / 2];
+  };
+  const bb = (x, l = 0.05) => Math.floor(x / l + 1e-9) * l, ba = (x, l = 0.05) => Math.ceil(x / l - 1e-9) * l;
+  LJ.rencana_otomatis = function (L, B, H, R, lm = 1.8) {
+    const k = LJ.keliling(B, H, R), bl = ba((800 + 5 * L) / 1000), bs = min(ba((800 + 5 * L) / 1000), 1.8);
+    const out = [{ nama: "K", jenis: "lunas", lebar: Math.round(bl * 1000) }];
+    const sa = k.datar - 0.15 - bl / 2;
+    let n = sa > 0.2 ? Math.max(1, Math.ceil(sa / lm - 1e-9)) : 0;
+    for (let i = 0; i < n; i++) { const b = i < n - 1 ? bb(sa / n) : sa - bb(sa / n) * (n - 1); out.push({ nama: `A${i + 1}`, jenis: "alas", lebar: Math.round(b * 1000) }); }
+    out.push({ nama: "B", jenis: "bilga", lebar: Math.round(ba(k.busur + 0.3) * 1000) });
+    const used = bl / 2 + out.slice(1).reduce((t, x) => t + x.lebar, 0) / 1000;
+    const ss = k.total - used - bs;
+    n = ss > 0.2 ? Math.max(1, Math.ceil(ss / lm - 1e-9)) : 0;
+    for (let i = 0; i < n; i++) { const b = i < n - 1 ? bb(ss / n) : ss - bb(ss / n) * (n - 1); out.push({ nama: `S${i + 1}`, jenis: "sisi", lebar: Math.round(b * 1000) }); }
+    out.push({ nama: "SH", jenis: "lajur_atas", lebar: Math.round(bs * 1000) });
+    return out;
+  };
+  LJ.posisi_lajur = function (daftar, B, H, R, memanjang = false, ap = 0.65) {
+    const res = [], tot = LJ.keliling(B, H, R).total;
+    let s = 0;
+    daftar.forEach((lj, i) => {
+      let b = lj.lebar / 1000;
+      if (lj.jenis === "lunas" && i === 0) b /= 2;
+      const s0 = s, s1 = s + b, [z0, y0] = LJ.titik(s0, B, H, R), [z1, y1] = LJ.titik(min(s1, tot), B, H, R);
+      res.push(Object.assign({}, lj, { s0, s1, z0, z1, y_luar: max(y0, y1), z_beban: memanjang ? min(z0 + 0.5 * ap, z1) : z0 }));
+      s = s1;
+    });
+    return res;
+  };
+
+  // ============================== laporan ====================================
+  function Laporan() { this.lembar = []; this.aktif = null; }
+  Laporan.prototype.lembar_baru = function (nama) { this.aktif = { nama, isi: [] }; this.lembar.push(this.aktif); };
+  Laporan.prototype.judul = function (t) { this.aktif.isi.push({ jenis: "JUDUL", teks: t }); };
+  Laporan.prototype.catatan = function (t) { this.aktif.isi.push({ jenis: "CATATAN", teks: t }); };
+  Laporan.prototype.baris = function (komponen, daerah, rincian, perlu, satuan, ref, dipakai = "", profil = "") {
+    const row = { jenis: "DATA", data: [komponen, daerah, rincian, perlu, dipakai, satuan, profil, ref] };
+    if (profil && profil.meta) { row.meta = profil.meta; row.data[6] = profil.teks; }
+    this.aktif.isi.push(row);
+  };
+
+  const f2 = x => x.toFixed(2).replace(".", ",");
+  const pyf = x => (Number.isInteger(x) ? x.toFixed(1) : String(x));   // tampil float gaya Python
+  const or = (v, d) => (v === null || v === undefined || v === 0 || v === "" || Number.isNaN(v) ? d : v);
+
+  // ============================== hitung =====================================
+  function hitung(inp) {
+    const lap = new Laporan();
+    const K = inp.KAPAL, S = inp.SISTEM, J = inp.JARAK, G = inp.GELADAK, BT = inp.BENTANG;
+    const M_ = inp.MUATAN, TG = inp.TANGKI_DASAR_GANDA, SK = inp.SEKAT, BA = inp.BANGUNAN_ATAS, LN = inp.LAIN;
+    const { L, B, H, T, CB, v0, ReH } = K;
+    const miring = !!K.beban_miring, Tb = K.Tb, Tmin = K.Tmin;
+    const disp = or(K.displacement, 1.025 * L * B * T * CB);
+    const a = J.a, ap = J.a_pembujur, e_web = J.e_gading_besar;
+    let hDB = J.hDB;
+    const dasar_ganda = hDB !== null && hDB !== undefined && hDB > 0;
+    hDB = dasar_ganda ? hDB : 0.0;
+    const bulat = t => P.bulatkan_tebal(t, LN.pembulatan_tebal);
+
+    const k = R.faktor_material_k(ReH);
+    const cRW = R.koef_daerah_pelayaran_cRW(K.daerah_pelayaran);
+    const c0 = R.koef_gelombang_c0(L, cRW), c0_unl = R.koef_gelombang_c0(L, 1.0), cL = R.koef_panjang_cL(L);
+    const p0 = { 1: R.beban_dasar_p0(CB, c0, cL, 1.0), 0.75: R.beban_dasar_p0(CB, c0, cL, 0.75), 0.6: R.beban_dasar_p0(CB, c0, cL, 0.6) };
+    const p01 = R.beban_dasar_p01(CB, c0, cL);
+    const s_perm = R.tegangan_izin_sigma_perm(L, k), s_LB = R.tegangan_memanjang_sigmaLB(L, k);
+    const pe_hal = R.beban_haluan_pe(L, v0), pe_bur = R.beban_buritan_pe(L);
+
+    const z_antara = or(G.z_geladak_antara, null);
+    const z_geladak_bawah = z_antara ? z_antara : H;
+    const l_gading = or(BT.gading_utama, z_geladak_bawah - hDB);
+    const z_gading = hDB + l_gading / 2;
+    const nf_alas = S.alas === "melintang" ? 1.0 : 0.83, nf_sisi = S.sisi === "melintang" ? 1.0 : 0.83;
+    const a_alas = S.alas === "melintang" ? a : ap, a_sisi = S.sisi === "melintang" ? a : ap, a_gel = S.geladak === "melintang" ? a : ap;
+    const DAERAH = [["A", "Buritan", 0.10], ["M", "Tengah", 0.50], ["F", "Haluan", 0.90]];
+    const pcg = or(G.muatan_geladak_pc, null);
+
+    function beban_sisi(xL, z, f) {
+      const cF = R.faktor_distribusi_cF(xL, CB);
+      const ps = R.beban_sisi_ps(p0[f], cF, T, z);
+      const ps1 = miring ? R.beban_sisi_ps1(p01, cF, T, B, z, B / 2) : 0;
+      let pe = null;
+      if (xL >= 0.9 && z >= Tb) pe = pe_hal;
+      else if (xL <= 0.1 && Tb <= z && z <= T + c0 / 2) pe = pe_bur;
+      return { ps, ps1, pe, cF };
+    }
+    function beban_alas(xL, f) {
+      const cF = R.faktor_distribusi_cF(xL, CB);
+      const pB = R.beban_alas_pB(p0[f], cF, T), pB1 = miring ? R.beban_alas_pB1(p01, T, B, B / 2) : 0;
+      return { pB, pB1, p: max(pB, pB1), cF };
+    }
+    function beban_geladak(xL, z, f) {
+      const cD = R.faktor_distribusi_cD(xL, L);
+      let pLm = null;
+      if (pcg) pLm = R.beban_geladak_muatan_pL(R.faktor_percepatan_av(L, v0, xL), pcg)[0];
+      return [R.beban_geladak_cuaca_pD(p0[f], T, H, z, cD, f, pLm, or(G.tinggi_muatan_geladak, null)), cD];
+    }
+    const pmax = bs => max(bs.ps, bs.pe || 0);
+    function teks_sisi(b) {
+      let t = `ps=${f2(b.ps)}`;
+      if (miring) t += `; ps1=${f2(b.ps1)}`;
+      if (b.pe) t += `; pe=${f2(b.pe)}`;
+      return t;
+    }
+
+    // ---------------- 1 DATA
+    lap.lembar_baru("1 Data & Koefisien");
+    lap.judul(`Ukuran utama - ${K.nama}`);
+    for (const [nm, v, s] of [["Panjang L", L, "m"], ["Lebar B", B, "m"], ["Tinggi H", H, "m"], ["Sarat T", T, "m"],
+      ["Koefisien blok CB", CB, "-"], ["Kecepatan v0", v0, "knot"], ["Displacement", disp, "ton"],
+      ["Jarak gading a", a, "m"], ["Tinggi dasar ganda hDB", hDB, "m"]]) lap.baris(nm, "", "", v, s, "Sec 1");
+    lap.judul("Koefisien");
+    lap.baris("Faktor material k", "", `ReH = ${ReH} N/mm2`, k, "-", "Sec 2, B / Tab 2.1");
+    lap.baris("Koef. daerah pelayaran cRW", "", K.daerah_pelayaran, cRW, "-", "Sec 4, A.2.2");
+    lap.baris("Koefisien gelombang c0", "", "", c0, "-", "Sec 4, A.2.2");
+    lap.baris("Koefisien panjang cL", "", "", cL, "-", "Sec 4, A.2.2");
+    for (const f of [1, 0.75, 0.6]) {
+      const guna = { 1: "pelat", 0.75: "gading/balok/pembujur", 0.6: "penumpu/gading besar" }[f];
+      lap.baris(`Beban dasar p0 (f=${pyf(f)})`, "", `2,1(CB+0,7) c0 cL f - untuk ${guna}`, p0[f], "kN/m2", "Sec 4, A.2.2");
+    }
+    lap.baris("Beban dasar p01 (melintang)", "", "2,6(CB+0,7) c0 cL", p01, "kN/m2", "Sec 4, A.2.2");
+    lap.baris("Tegangan izin sigma_perm", "", "", s_perm, "N/mm2", "Sec 6, A.2");
+    lap.baris("Tegangan memanjang sigma_LB (pendekatan)", "", "", s_LB, "N/mm2", "Sec 6, B.1.2");
+    for (const [kd, nm, xL] of DAERAH) {
+      const av = R.faktor_percepatan_av(L, v0, xL);
+      lap.baris(`cD / cF / av (${nm})`, kd, `x/L=${pyf(xL)}: cD=${f2(R.faktor_distribusi_cD(xL, L))}; cF=${f2(R.faktor_distribusi_cF(xL, CB))}; av=${f2(av)}`,
+        av, "-", "Sec 4 Tab 4.1, C.1.1");
+    }
+    lap.judul("Kekuatan memanjang (persyaratan minimum)");
+    const Wmin = R.modulus_midship_min(L, B, CB, k, c0_unl, K.daerah_pelayaran);
+    lap.baris("Modulus penampang midship min", "M", "k c0 L^2 B (CB+0,7) 10^-6", Wmin * 1e6, "cm3", "Sec 5, C.2.1");
+    lap.baris("Momen inersia midship min", "M", "3.10^-2 W L/k", R.inersia_midship_min(Wmin, L, k) * 1e8, "cm4", "Sec 5, C.3");
+    if (dasar_ganda) lap.baris("Tinggi dasar ganda minimum", "", "B/20 (760-2000 mm)", R.tinggi_dasar_ganda_min(B), "mm", "Sec 8, B.1.3", hDB * 1000);
+    if (L <= 65) lap.catatan("L <= 65 m: luas penampang geladak kekuatan ditentukan dari Wmin (Sec 7, A.4).");
+
+    // ---------------- 2 BEBAN
+    lap.lembar_baru("2 Beban");
+    const z_sisi_bawah = hDB + 0.5 * a_sisi, z_sisi_atas = T + 0.5 * a_sisi;
+    const BEBAN = {};
+    const z_lim = or(TG.z_puncak_pipa_limpah, H + 0.76);
+    for (const [kd, nm, xL] of DAERAH) {
+      const b = {};
+      lap.judul(`Daerah ${kd} - ${nm} (x/L = ${pyf(xL)})`);
+      for (const [f, guna] of [[1, "pelat"], [0.75, "balok geladak / pembujur"], [0.6, "penumpu geladak"]]) {
+        const [pD, cD] = beban_geladak(xL, H, f);
+        b["pD" + f] = pD;
+        lap.baris(`Geladak cuaca pD - ${guna}`, kd, `z=H=${f2(H)}; f=${pyf(f)}; cD=${f2(cD)}`, pD, "kN/m2", "Sec 4, B.1");
+      }
+      for (const [z, nmz] of [[z_sisi_bawah, "pelat sisi bawah GA"], [z_sisi_atas, "pelat sisi atas GA"]]) {
+        const bs = beban_sisi(xL, z, 1); b[nmz] = bs;
+        lap.baris(`Sisi - ${nmz}`, kd, `z=${f2(z)}; f=1; ` + teks_sisi(bs), pmax(bs), "kN/m2", "Sec 4, B.2");
+      }
+      let bs = beban_sisi(xL, z_gading, 0.75); b.gading = bs;
+      lap.baris("Sisi - gading utama/pembujur", kd, `z=${f2(z_gading)}; f=0,75; ` + teks_sisi(bs), pmax(bs), "kN/m2", "Sec 4, B.2");
+      bs = beban_sisi(xL, z_gading, 0.6); b.gading_besar = bs;
+      lap.baris("Sisi - gading besar/senta", kd, `z=${f2(z_gading)}; f=0,6; ` + teks_sisi(bs), pmax(bs), "kN/m2", "Sec 4, B.2");
+      for (const [f, guna] of [[1, "pelat"], [0.75, "gading alas/pembujur"], [0.6, "penumpu/wrang"]]) {
+        const ba = beban_alas(xL, f); b["pB" + f] = ba;
+        let rin = `f=${pyf(f)}; cF=${f2(ba.cF)}; pB=${f2(ba.pB)}`;
+        if (miring) rin += `; pB1=${f2(ba.pB1)} (y=B/2)`;
+        lap.baris(`Alas - ${guna}`, kd, rin, ba.p, "kN/m2", "Sec 4, B.3");
+      }
+      const av = R.faktor_percepatan_av(L, v0, xL); b.av = av;
+      if (dasar_ganda) {
+        const h_mt = or(M_.tinggi_muatan, H - hDB);
+        b.pi = R.beban_alas_dalam_pi(M_.G_per_V, h_mt, av);
+        lap.baris("Alas dalam pi (muatan)", kd, `G/V=${M_.G_per_V}; h=${f2(h_mt)}; av=${f2(av)}`, b.pi, "kN/m2", "Sec 4, C.2.1");
+      }
+      if (z_antara) {
+        const [pL, pc] = R.beban_geladak_muatan_pL(av, null, H - z_antara); b.pL = pL;
+        lap.baris("Geladak antara pL", kd, `pc=7h=${f2(pc)}; av=${f2(av)}`, pL, "kN/m2", "Sec 4, C.1.1");
+      }
+      if (dasar_ganda && TG.ada) {
+        const rho = TG.rho, pv = TG.pv || 0;
+        b.p1_alas = R.tekanan_tangki_p1(hDB, av, rho, pv);
+        b.p2_alas = R.tekanan_tangki_p2(R.tinggi_beban_h2(hDB, z_lim - hDB, rho, pv));
+        b.p1_atas = R.tekanan_tangki_p1(0, av, rho, pv);
+        b.p2_atas = R.tekanan_tangki_p2(R.tinggi_beban_h2(0, z_lim - hDB, rho, pv));
+        b.p1_tgh = R.tekanan_tangki_p1(hDB / 2, av, rho, pv);
+        b.p2_tgh = R.tekanan_tangki_p2(R.tinggi_beban_h2(hDB / 2, z_lim - hDB, rho, pv));
+        lap.baris("Tangki DB - p1 di alas", kd, `h1=hDB=${f2(hDB)}; rho=${rho}`, b.p1_alas, "kN/m2", "Sec 4, D.1.1");
+        lap.baris("Tangki DB - p2 di alas", kd, `pipa limpah z=${f2(z_lim)}`, b.p2_alas, "kN/m2", "Sec 4, D.1.2");
+        lap.baris("Tangki DB - p2 di alas dalam", kd, "", b.p2_atas, "kN/m2", "Sec 4, D.1.2");
+      }
+      BEBAN[kd] = b;
+    }
+    lap.judul("Beban khusus");
+    lap.baris("Beban haluan pe", "F", "c=0,8 (flare <= 40 deg)", pe_hal, "kN/m2", "Sec 4, B.2.2");
+    lap.baris("Beban buritan pe", "A", "cA = 0,3c >= 0,36", pe_bur, "kN/m2", "Sec 4, B.2.3");
+    const [pSL, ksl] = R.tekanan_slamming_pSL(L, CB, Tb, 0.5 + min(0.33 * CB + L / 2500, 0.35) + 0.05, cRW);
+    lap.baris("Slamming alas haluan pSL (maks)", "F", `Tb=${f2(Tb)}; c1=${f2(ksl.c1)}; c2=${f2(ksl.c2)}; cSL=1`, pSL, "kN/m2", "Sec 4, B.4");
+    if (pSL <= 0) lap.catatan("c1 = 0 -> penguatan alas haluan akibat slamming tidak menentukan.");
+    const av_A = BEBAN.A.av;
+    lap.baris("Geladak akomodasi", "A", `3,5(1+av); av=${f2(av_A)}`, R.beban_geladak_akomodasi(av_A), "kN/m2", "Sec 4, C.3.1");
+    lap.baris("Geladak mesin", "A", "8,0(1+av)", R.beban_geladak_mesin(av_A), "kN/m2", "Sec 4, C.3.2");
+
+    lap.judul("Geladak bangunan atas & rumah geladak (pDA)");
+    const BA_DECK = [];
+    const h_akil = BA.akil.tinggi, h_kimbul = BA.kimbul.tinggi, xL_akil = (BA.akil.x_belakang_L + 1) / 2;
+    for (const [nama, xL_, z_, akil, lebar] of [["Geladak akil", xL_akil, H + h_akil, true, B], ["Geladak kimbul", 0.10, H + h_kimbul, false, B]]) {
+      for (const f of [1, 0.75, 0.6]) {
+        const [pD] = beban_geladak(xL_, z_, f);
+        const [pDA, n] = R.beban_geladak_bangunan_atas_pDA(pD, z_, H, akil);
+        if (f === 1) lap.baris(`${nama} (pelat)`, akil ? "F" : "A", `z=${f2(z_)}; pD=${f2(pD)}; n=${f2(n)}`, pDA, "kN/m2", "Sec 4, B.5.1");
+        BA_DECK.push([nama, akil ? "F" : "A", xL_, z_, f, pDA, lebar]);
+      }
+    }
+    let z_rg = H + h_kimbul;
+    for (const rg of BA.rumah_geladak) {
+      z_rg += rg.tinggi;
+      for (const f of [1, 0.75, 0.6]) {
+        const [pD] = beban_geladak(0.10, z_rg, f);
+        const [pDA, n] = R.beban_geladak_bangunan_atas_pDA(pD, z_rg, H, false, rg.lebar, B);
+        if (f === 1) lap.baris(`Geladak ${rg.nama} (pelat)`, "A", `z=${f2(z_rg)}; pD=${f2(pD)}; n=${f2(n)}; b'/B=${f2(rg.lebar / B)}`, pDA, "kN/m2", "Sec 4, B.5.1");
+        BA_DECK.push([`Geladak ${rg.nama}`, "A", 0.10, z_rg, f, pDA, rg.lebar]);
+      }
+    }
+    lap.baris("Atap rumah kemudi (min)", "A", "", 2.5, "kN/m2", "Sec 4, B.5.2");
+
+    lap.judul("Dinding bangunan atas / rumah geladak (pA)");
+    const DINDING = [];
+    const tiers = [{ nama: "Dinding depan kimbul", tingkat: 1, x_depan_L: BA.kimbul.x_depan_L, x_belakang_L: BA.kimbul.x_belakang_L, lebar: B, tinggi: h_kimbul }].concat(BA.rumah_geladak);
+    let z_dasar = H;
+    for (const tr of tiers) {
+      const z_ssl = (z_dasar - T) + tr.tinggi / 2;
+      for (const pos of ["depan", "samping", "belakang"]) {
+        const x_ = pos === "belakang" ? (tr.x_belakang_L ?? 0.04) * L : tr.x_depan_L * L;
+        const r_ = R.beban_dinding_rumah_geladak_pA(L, CB, x_, z_ssl, tr.lebar, B, tr.tingkat, pos);
+        DINDING.push([tr, pos, r_]);
+        lap.baris(`${tr.nama} - ${pos} (tk ${tr.tingkat})`, "A",
+          `z(SLL)=${f2(z_ssl)}; n=${f2(r_.n)}; b=${f2(r_.b)}; f=${f2(r_.f)}; c=${f2(r_.c)}; pA rumus=${f2(r_.pA_rumus)}; pAmin=${f2(r_.pAmin)}`,
+          r_.pA, "kN/m2", "Sec 16, C.2");
+      }
+      z_dasar += tr.tinggi;
+    }
+
+    // ---------------- 3 PELAT
+    lap.lembar_baru("3 Tebal Pelat");
+    const TP = {};
+    lap.judul("Pelat alas (bottom plating)");
+    for (const [kd] of DAERAH) {
+      const pB = BEBAN[kd].pB1.p;
+      const r_ = R.tebal_pelat_alas(L, a_alas, pB, k, nf_alas, kd === "M" ? "M" : "ujung");
+      TP["alas" + kd] = bulat(r_.t_perlu);
+      lap.baris("Pelat alas", kd, `pB=${f2(pB)}; a=${a_alas}; nf=${nf_alas}; t'=${f2(r_.t_aksen)}; tK=${f2(r_.tK)}; tmin=${f2(r_.tmin)}`,
+        r_.t_perlu, "mm", "Sec 6, B.1 & B.3", TP["alas" + kd]);
+    }
+    const tB_M = TP.alasM, lk = R.lunas_pelat_datar(L, tB_M);
+    lap.baris("Lunas pelat datar - tebal (0,7L tengah)", "M", `tB + 2,0 = ${f2(tB_M)} + 2`, lk.t_tengah, "mm", "Sec 6, B.5.1", bulat(lk.t_tengah));
+    lap.baris("Lunas pelat datar - tebal (ujung)", "A/F", "tB", max(TP.alasA, TP.alasF), "mm", "Sec 6, B.5.1", max(TP.alasA, TP.alasF));
+    lap.baris("Lunas pelat datar - lebar", "", "800 + 5L", lk.b_mm, "mm", "Sec 6, B.5.1", Math.ceil(lk.b_mm / 50) * 50);
+    lap.baris("Lajur bilga - tebal", "M", "= pelat alas (cek tekuk Sec 3 F)", tB_M, "mm", "Sec 6, B.4.1", tB_M);
+    lap.baris("Lajur bilga - lebar (bila baja > A/AH)", "", "800 + 5L", R.lebar_lajur_bilga(L), "mm", "Sec 6, B.4.2");
+    if (pSL > 0) {
+      const b_panel = S.alas === "melintang" ? min(L / 250 + 0.9, 1.4) : 3 * a;
+      const r_ = R.tebal_pelat_alas_haluan(a_alas, b_panel, pSL, k);
+      TP.alas_haluan = bulat(max(r_.t_perlu, TP.alasF));
+      lap.baris("Pelat alas haluan (slamming)", "F", `pSL=${f2(pSL)}; f2=${f2(r_.f2)}; a=${a_alas}; b=${f2(b_panel)}; t'=${f2(r_.t_aksen)}`,
+        r_.t_perlu, "mm", "Sec 6, E.2.1", TP.alas_haluan);
+    }
+    lap.judul("Pelat sisi (side shell plating)");
+    for (const [kd] of DAERAH) {
+      for (const [nmz, z] of [["pelat sisi bawah GA", z_sisi_bawah], ["pelat sisi atas GA", z_sisi_atas]]) {
+        const bs = BEBAN[kd][nmz];
+        const r_ = R.tebal_pelat_sisi(L, a_sisi, bs.ps, k, nf_sisi, kd === "M" ? "M" : "ujung", bs.pe, miring ? bs.ps1 : null);
+        const bawah = nmz.includes("bawah"), key = (bawah ? "sisi_bawah" : "sisi_atas") + kd;
+        TP[key] = bulat(r_.t_perlu);
+        lap.baris(`Pelat sisi ${bawah ? "bawah" : "atas"} garis air`, kd, `z=${f2(z)}; ${teks_sisi(bs)}; t'=${f2(r_.t_aksen)}; tK=${f2(r_.tK)}; tmin=${f2(r_.tmin)}`,
+          r_.t_perlu, "mm", "Sec 6, C.1 & C.2", TP[key]);
+      }
+    }
+    lap.judul("Pelat geladak kekuatan (strength deck)");
+    for (const [kd] of DAERAH) {
+      const pD = BEBAN[kd].pD1;
+      const pLm = pcg ? R.beban_geladak_muatan_pL(BEBAN[kd].av, pcg)[0] : null;
+      const r_ = R.tebal_geladak_kekuatan(L, a_gel, pD, k, pLm, kd === "M" ? "M" : "ujung");
+      TP["geladak" + kd] = bulat(r_.t_perlu);
+      let rin = `pD=${f2(pD)}; tE1=${f2(r_.tE1)}; tEmin=${f2(r_.tEmin)}`;
+      if (r_.tmin !== undefined) rin += `; tmin=${f2(r_.tmin)}`;
+      lap.baris("Pelat geladak kekuatan", kd, rin, r_.t_perlu, "mm", "Sec 7, A.6 & A.7", TP["geladak" + kd]);
+    }
+    if (S.geladak === "memanjang" && L > 65) {
+      const tcr_t = R.tebal_dengan_korosi(R.tebal_kritis_tcrit(a_gel, s_LB, ReH, 0.5), k)[0];
+      lap.baris("Tebal kritis geladak (panduan tekuk)", "M", `sigma_LB=${f2(s_LB)}; c=0,5`, tcr_t, "mm", "Sec 7 A.5.2 / Sec 6 B.2.1");
+      TP.geladakM = max(TP.geladakM, bulat(tcr_t));
+    }
+    lap.baris("Jari-jari sudut lubang palka", "M", `l=${G.panjang_palka}; b=${G.lebar_palka}`,
+      R.lubang_geladak_jari_jari(G.panjang_palka, G.lebar_palka, B) * 1000, "mm", "Sec 7, A.3.3");
+    lap.judul("Lajur atas (sheer strake)");
+    let ls;
+    for (const [kd] of DAERAH) {
+      ls = R.lajur_atas_sheer_strake(L, TP["geladak" + kd], TP["sisi_atas" + kd]);
+      TP["sheer" + kd] = bulat(ls.t);
+      lap.baris("Lajur atas - tebal", kd, `max(0,5(tD+tS); tS); tD=${pyf(TP["geladak" + kd])}; tS=${pyf(TP["sisi_atas" + kd])}`, ls.t, "mm", "Sec 6, C.3.2", TP["sheer" + kd]);
+    }
+    lap.baris("Lajur atas - lebar", "", "800 + 5L <= 1800", ls.b_mm, "mm", "Sec 6, C.3.1", Math.ceil(ls.b_mm / 50) * 50);
+
+    // ---------------- rencana lajur pelat kulit
+    lap.catatan("Tebal pelat kulit per lajur (untuk gambar bukaan kulit) ada di bagian 'Rencana lajur pelat kulit'; baris pelat alas/sisi di atas adalah nilai umum pada z acuan.");
+    const LJI = inp.LAJUR || {};
+    const R_b = LJ.jari_jari_bilga(B, LJI.jari_jari_bilga), kel = LJ.keliling(B, H, R_b);
+    lap.judul(`Rencana lajur pelat kulit - R bilga = ${f2(R_b)} m; setengah keliling = ${f2(kel.total)} m`);
+    const daftar_lajur = kd => ((LJI.sama_semua_daerah === false && LJI[kd] && LJI[kd].length) ? LJI[kd] : ((LJI.M && LJI.M.length) ? LJI.M : LJ.rencana_otomatis(L, B, H, R_b)));
+    const beban_alas_y = (xL, y) => {
+      const cF = R.faktor_distribusi_cF(xL, CB), pB = R.beban_alas_pB(p0[1], cF, T), pB1 = miring ? R.beban_alas_pB1(p01, T, B, y) : 0;
+      return [pB, pB1, max(pB, pB1)];
+    };
+    const b_panel_sl = S.alas === "melintang" ? min(L / 250 + 0.9, 1.4) : 3 * a;
+    const b_lunas_min = 800 + 5 * L, b_sheer_min = min(800 + 5 * L, 1800);
+    const LAJUR_HASIL = {};
+    for (const [kd, , xL] of DAERAH) {
+      const pos = LJ.posisi_lajur(daftar_lajur(kd), B, H, R_b, S.sisi === "memanjang", ap);
+      const dr = kd === "M" ? "M" : "ujung", hasil = [];
+      for (const p_ of pos) {
+        const j = p_.jenis;
+        let t, rin, ref;
+        if (j === "lunas" || j === "alas") {
+          const [pB, pB1, pBx] = beban_alas_y(xL, p_.y_luar);
+          const r_ = R.tebal_pelat_alas(L, a_alas, pBx, k, nf_alas, dr);
+          t = r_.t_perlu;
+          rin = `pB=${f2(pB)}` + (miring ? `; pB1=${f2(pB1)} (y=${f2(p_.y_luar)})` : "") + `; t=${f2(r_.t_perlu)}`;
+          if (kd === "F" && pSL > 0) { const t_sl = R.tebal_pelat_alas_haluan(a_alas, b_panel_sl, pSL, k).t_perlu; t = max(t, t_sl); rin += `; slamming t=${f2(t_sl)}`; }
+          if (j === "lunas" && kd === "M") { t += 2; rin += "; +2 mm (0,7L tengah)"; }
+          ref = j === "lunas" ? "Sec 6, B.5.1" : "Sec 6, B.1-B.3 / E.2";
+        } else if (j === "bilga") {
+          const [, , pBx] = beban_alas_y(xL, B / 2);
+          const ta = R.tebal_pelat_alas(L, a_alas, pBx, k, nf_alas, dr).t_perlu;
+          const bs = beban_sisi(xL, p_.z_beban, 1);
+          const tsi = R.tebal_pelat_sisi(L, a_sisi, bs.ps, k, nf_sisi, dr, bs.pe, miring ? bs.ps1 : null).t_perlu;
+          t = max(ta, tsi); rin = `maks(alas y=B/2: ${f2(ta)}; sisi z=${f2(p_.z_beban)}: ${f2(tsi)})`; ref = "Sec 6, B.4.1";
+        } else {
+          const bs = beban_sisi(xL, p_.z_beban, 1);
+          const r_ = R.tebal_pelat_sisi(L, a_sisi, bs.ps, k, nf_sisi, dr, bs.pe, miring ? bs.ps1 : null);
+          t = r_.t_perlu; rin = `${teks_sisi(bs)}; t'=${f2(r_.t_aksen)}; tmin=${f2(r_.tmin)}`; ref = "Sec 6, C.1 & C.2";
+        }
+        hasil.push(Object.assign({}, p_, { t, rin, ref }));
+      }
+      const ts = hasil.filter(h => h.jenis === "sisi").map(h => bulat(h.t)), tSmax = ts.length ? max(...ts) : 0;
+      for (const h of hasil) {
+        if (h.jenis === "lajur_atas") {
+          const tD = TP["geladak" + kd];
+          h.t = max(h.t, 0.5 * (tD + tSmax), tSmax);
+          h.rin += `; maks(0,5(tD+tS); tS) dgn tD=${f2(tD)}, tS=${f2(tSmax)}`; h.ref = "Sec 6, C.3.2";
+        }
+        h.t_pakai = bulat(h.t);
+        lap.baris(`Lajur ${h.nama} - ${LJ.NAMA_JENIS[h.jenis].toLowerCase()} (b=${h.lebar.toFixed(0)} mm)`, kd,
+          `s=${f2(h.s0)}-${f2(h.s1)} m; z=${f2(h.z0)}-${f2(h.z1)} m; z beban=${f2(h.z_beban)}; ` + h.rin, h.t, "mm", h.ref, h.t_pakai);
+      }
+      LAJUR_HASIL[kd] = hasil;
+      const total = pos.length ? pos[pos.length - 1].s1 : 0;
+      if (Math.abs(total - kel.total) > 0.05)
+        lap.catatan(`Daerah ${kd}: jumlah lebar lajur (${f2(total)} m dari CL) ${total < kel.total ? "kurang" : "lebih"} dari setengah keliling penampang (${f2(kel.total)} m) - atur kembali lebar lajur.`);
+      for (const h of hasil) {
+        if (h.jenis === "lunas" && h.lebar < b_lunas_min - 1) lap.catatan(`Daerah ${kd}: lebar lunas ${h.lebar.toFixed(0)} mm < 800 + 5L = ${b_lunas_min.toFixed(0)} mm (Sec 6, B.5.1).`);
+        if (h.jenis === "lajur_atas" && h.lebar < b_sheer_min - 1) lap.catatan(`Daerah ${kd}: lebar lajur atas ${h.lebar.toFixed(0)} mm < ${b_sheer_min.toFixed(0)} mm (Sec 6, C.3.1).`);
+      }
+    }
+    lap.lajur = { R: R_b, keliling: kel, hasil: LAJUR_HASIL };
+    if (z_antara) {
+      lap.judul("Geladak antara (lower deck)");
+      for (const [kd] of DAERAH) {
+        const r_ = R.tebal_geladak_bawah(L, a_gel, BEBAN[kd].pL, k, true);
+        TP["antara" + kd] = bulat(r_.t_perlu);
+        lap.baris("Pelat geladak antara", kd, `pL=${f2(BEBAN[kd].pL)}; t'=${f2(r_.t_aksen)}`, r_.t_perlu, "mm", "Sec 7, B.1.1", TP["antara" + kd]);
+      }
+    }
+    lap.judul("Konstruksi alas");
+    const KA = {};
+    if (dasar_ganda) {
+      const cg = R.penumpu_tengah_dasar_ganda(B, k, hDB * 1000); KA.cg = cg;
+      lap.baris("Penumpu tengah - tinggi perlu", "", "350 + 45 B >= 600", cg.h_mm, "mm", "Sec 8, B.2.2.1", hDB * 1000);
+      if (hDB * 1000 < cg.h_mm) lap.catatan(`hDB as built (${(hDB * 1000).toFixed(0)} mm) < tinggi perlu penumpu tengah (${cg.h_mm.toFixed(0)} mm) -> tebal penumpu dikoreksi h/ha (Sec 8, B.2.2.2).`);
+      TP.cg = bulat(cg.tm);
+      lap.baris("Penumpu tengah - tebal", "", `h=${f2(cg.h_mm)}; ha=${f2(cg.ha_mm)}`, cg.tm, "mm", "Sec 8, B.2.2.2", TP.cg);
+      const tsg = R.penumpu_samping_dasar_ganda(cg.h_mm, k, hDB * 1000); TP.sg = bulat(tsg);
+      const n_sg = R.jumlah_penumpu_samping(B);
+      lap.baris("Penumpu samping - jumlah per sisi", "", `jarak sisi-CL = ${f2(B / 2)} m`, n_sg, "buah", "Sec 8, B.3.1", n_sg);
+      lap.baris("Penumpu samping - tebal", "", "h^2/(120 ha) sqrt(k)", tsg, "mm", "Sec 8, B.3.2", TP.sg);
+      if (S.alas === "memanjang") {
+        const tlg = R.tebal_penumpu_memanjang_alas(L, k);
+        lap.baris("Penumpu memanjang (sistem girder)", "", "(5+0,03L) sqrt(k)", tlg, "mm", "Sec 8, B.7.5.2", bulat(tlg));
+      }
+      const e_wr = S.alas === "melintang" ? J.jarak_wrang_pelat : e_web;
+      const wr = R.wrang_pelat_dasar_ganda(cg.tm, T, B, e_wr, k, !!M_.ruang_kosong_saat_muatan_penuh);
+      TP.wrang = bulat(wr.t); KA.wrang = wr;
+      lap.baris("Wrang pelat - tebal", "", `(tm - 2) sqrt(k), maks 16; tm=${f2(cg.tm)}`, wr.t, "mm", "Sec 8, B.6.2.1", TP.wrang);
+      for (const [kd] of DAERAH) {
+        const h_lim = TG.ada ? z_lim - hDB : null;
+        const ad = R.alas_dalam(a_alas, T, hDB, k, BEBAN[kd].pi, h_lim, !!M_.tanpa_ceiling);
+        TP["alas_dalam" + kd] = bulat(ad.t_perlu);
+        lap.baris("Pelat alas dalam", kd, `p1=10(T-hDB)=${f2(ad.p1)}; p2=10h=${f2(ad.p2)}; pi=${f2(ad.p3)}; t'=${f2(ad.t_aksen)}; tK=${f2(ad.tK)}`,
+          ad.t_perlu, "mm", "Sec 8, B.4.1", TP["alas_dalam" + kd]);
+      }
+      if (TG.ada) {
+        const bM = BEBAN.M, wk = R.konstruksi_tangki(L, a, hDB, bM.p1_tgh, bM.p2_tgh, k);
+        TP.wrang_kedap = bulat(max(wk.t_perlu, wr.t));
+        lap.baris("Wrang kedap air - tebal", "M", `p1=${f2(bM.p1_tgh)}; p2=${f2(bM.p2_tgh)}; t1=${f2(wk.t1)}; t2=${f2(wk.t2)}; tmin=${f2(wk.tmin)}; >= wrang pelat`,
+          max(wk.t_perlu, wr.t), "mm", "Sec 8 B.6.3 / Sec 12 B.2", TP.wrang_kedap);
+      }
+    } else {
+      const at = R.alas_tunggal(B, T, a, B, k);
+      lap.baris("Wrang alas tunggal - tinggi", "", "55B - 45 >= 180", at.h_wrang_mm, "mm", "Sec 8, A.1.2.1");
+      lap.baris("Wrang alas tunggal - tebal badan", "", "h/100 + 3", at.t_wrang, "mm", "Sec 8, A.1.2.1", bulat(at.t_wrang));
+      const pa = R.penumpu_alas_tunggal(L);
+      lap.baris("Penumpu tengah alas tunggal - tebal", "", "0,07L + 5,5", pa.tengah_tw, "mm", "Sec 8, A.2.2.1", bulat(pa.tengah_tw));
+      lap.baris("Penumpu tengah - luas pelat hadap", "", "0,7L + 12", pa.tengah_Af, "cm2", "Sec 8, A.2.2.1");
+      lap.baris("Penumpu samping alas tunggal - tebal", "", "0,04L + 5", pa.samping_tw, "mm", "Sec 8, A.2.2.2", bulat(pa.samping_tw));
+      lap.baris("Penumpu samping - luas pelat hadap", "", "0,2L + 6", pa.samping_Af, "cm2", "Sec 8, A.2.2.2");
+    }
+    const wc = R.wrang_ceruk(L, H);
+    lap.baris("Wrang ceruk - tebal", "A/F", "0,035L + 5", wc.t, "mm", "Sec 8, A.1.2.3", bulat(wc.t));
+    lap.baris("Wrang ceruk haluan - tinggi", "F", "0,06H + 0,7", wc.h_ceruk_haluan_m * 1000, "mm", "Sec 8, A.1.2.3");
+
+    lap.judul("Pelat sekat kedap air (per lajur, dari bawah)");
+    const a_sk = SK.jarak_penegar;
+    const SEKAT = [["Sekat tubrukan", true], ["Sekat ruang muat/kamar mesin", false]];
+    for (const [jenis, tub] of SEKAT) {
+      const z_top = tub ? or(SK.z_atas_sekat_tubrukan, H) : H, z_ref = z_top + 1;
+      let z_e = tub ? 0 : hDB, i = 1;
+      while (z_e < z_top - 0.01 && i < 60) {
+        const z_lc = z_e + 0.5 * a_sk;
+        const sk = R.sekat_kedap_air(a_sk, z_top - hDB, z_ref - z_lc, z_ref - z_lc, ReH, k, tub, SK.tumpuan_penegar);
+        TP[jenis + i] = bulat(sk.t_perlu);
+        lap.baris(`${jenis} - lajur ${i}`, "", `z tepi bawah=${f2(z_e)}; h=${f2(z_ref - z_lc)}; p=${f2(sk.p_pelat)}; cp=${f2(sk.cp)}; tmin=${f2(sk.tmin)}`,
+          sk.t_perlu, "mm", "Sec 11, B.2.1", TP[jenis + i]);
+        z_e += SK.lebar_lajur_pelat; i++;
+      }
+    }
+    lap.judul("Bangunan atas & rumah geladak");
+    const tmin_alas = R.tebal_min_pelat_alas(L, k);
+    for (const [nama, kd, xL_, z_] of [["Sisi akil", "F", xL_akil, H + h_akil / 2], ["Sisi kimbul", "A", 0.10, H + h_kimbul / 2]]) {
+      const bs = beban_sisi(xL_, z_, 1), r_ = R.pelat_sisi_bangunan_atas(a, pmax(bs), k, tmin_alas);
+      TP[nama] = bulat(r_.t_perlu);
+      lap.baris(`Pelat ${nama.toLowerCase()}`, kd, `z=${f2(z_)}; ${teks_sisi(bs)}; 0,8 tmin=${f2(r_.tmin)}`, r_.t_perlu, "mm", "Sec 16, B.1.1", TP[nama]);
+    }
+    for (const [nama, kd, , , f, pDA] of BA_DECK) {
+      if (f !== 1) continue;
+      const r_ = R.pelat_geladak_bangunan_atas(L, a, pDA, k);
+      TP[nama] = bulat(r_.t_perlu);
+      lap.baris(`Pelat ${nama.toLowerCase()}`, kd, `pDA=${f2(pDA)}; t'=${f2(r_.t_aksen)}; tmin=${f2(r_.tmin)}`, r_.t_perlu, "mm", "Sec 16, B.2.1", TP[nama]);
+    }
+    const a_dd = BA.jarak_penegar_dinding;
+    for (const [tr, pos, r_] of DINDING) {
+      const dd = R.dinding_rumah_geladak(L, a_dd, tr.tinggi, r_.pA, k, tr.tingkat);
+      TP[tr.nama + "|" + pos] = bulat(dd.t_perlu);
+      lap.baris(`${tr.nama} - ${pos}`, "A", `pA=${f2(r_.pA)}; a=${a_dd}; tmin=${f2(dd.tmin)}`, dd.t_perlu, "mm", "Sec 16, C.3.2", TP[tr.nama + "|" + pos]);
+    }
+    lap.judul("Lain-lain");
+    const tkb = R.tebal_kubu_kubu(L);
+    lap.baris("Pelat kubu-kubu (bulwark)", "", "(0,75 - L/1000) sqrt(L)", tkb, "mm", "Sec 6, K.1", bulat(tkb));
+    const lh = R.linggi_haluan(L, k, a);
+    lap.baris("Linggi haluan batang - luas", "F", "1,25 L", lh.Ab_batang_cm2, "cm2", "Sec 13, B.1.1");
+    lap.baris("Linggi haluan pelat - tebal", "F", `aB=${a}`, lh.t_pelat_linggi, "mm", "Sec 13, B.2.1", bulat(lh.t_pelat_linggi));
+    lap.baris("Linggi haluan pelat - panjang ke belakang", "F", "70 sqrt(L)", lh.l_pelat_mm, "mm", "Sec 13, B.2.1");
+    const tg = R.penguatan_kapal_tunda(disp, k, S.sisi === "memanjang" ? BT.pembujur : null);
+    lap.baris("Pelat sisi daerah dorong kapal tunda", "", `Pf=${f2(tg.Pf)} kN; D=${disp.toFixed(0)} t`, tg.t_perlu, "mm", "Sec 6, C.5.2", bulat(tg.t_perlu));
+
+    // ---------------- 4 MODULUS
+    lap.lembar_baru("4 Modulus & Profil");
+    const MOD = {};
+    const usul = (W, Aq, tp, be) => {
+      const pr = P.pilih_profil(W, tp, be * 1000, Aq, k);
+      return pr ? { teks: `${pr.nama} (W=${pr.W_ada.toFixed(0)})`, meta: { W, Aq, tp, be: be * 1000, k, penumpu: false, Iq: 0, hmin: 0, twmin: 0, pilihan: pr.nama } } : "";
+    };
+    const usul_T = (W, Aw, tp, l, e, hmin = 0, Iq = 0, twmin = 0) => {
+      const em = R.lebar_efektif_em(0.6 * l, e);
+      const pr = P.pilih_penumpu(W, Aw, tp, em * 1000, hmin, twmin, Iq, k);
+      return pr ? { teks: `${pr.nama} (W=${pr.W_ada.toFixed(0)})`, meta: { W, Aq: Aw, tp, be: em * 1000, k, penumpu: true, Iq, hmin, twmin, pilihan: pr.nama } } : "";
+    };
+    if (S.sisi === "melintang") {
+      lap.judul(`Gading utama (main frame) - bentang l = ${f2(l_gading)} m`);
+      for (const [kd] of DAERAH) {
+        const p_ = pmax(BEBAN[kd].gading), g = R.gading_utama(L, a, l_gading, p_, k, BT.lKu, BT.lKo);
+        MOD["gading" + kd] = g.W;
+        lap.baris("Gading utama - W", kd, `p=${f2(p_)}; n=${f2(g.n)}; c=${f2(g.c)}; ma=${f2(g.ma)}; a=${a}`, g.W, "cm3", "Sec 9, A.2.1.1", "",
+          usul(g.W, g.ARU, TP["sisi_bawah" + kd], a));
+        lap.baris("Gading utama - luas geser ujung bawah ARU", kd, "", g.ARU, "cm2", "Sec 9, A.2.1.1");
+        lap.baris("Gading utama - luas geser ujung atas ARO", kd, "", g.ARO, "cm2", "Sec 9, A.2.1.1");
+      }
+      if (z_antara) {
+        lap.judul("Gading geladak antara");
+        const l_t = H - z_antara;
+        for (const [kd, , xL] of DAERAH) {
+          const bs = beban_sisi(xL, z_antara + l_t / 2, 0.75), p_ = pmax(bs);
+          const g = R.gading_antara_bangunan_atas(a, l_t, p_, k, 1, 1, BEBAN[kd].pL, BT.balok_geladak);
+          lap.baris("Gading geladak antara - W", kd, `p=${f2(p_)}; pmin=${f2(g.pmin)}; m=${f2(g.m)}`, g.W, "cm3", "Sec 9, A.3.2", "", usul(g.W, g.A, TP["sisi_atas" + kd], a));
+        }
+      }
+      lap.judul("Gading besar sisi (web frame) di ruang muat");
+      for (const [kd] of DAERAH) {
+        const p_ = pmax(BEBAN[kd].gading_besar), gb = R.gading_besar_sisi(e_web, l_gading, p_, k);
+        lap.baris("Gading besar - W", kd, `p=${f2(p_)}; e=${e_web}; l=${f2(l_gading)}`, gb.W, "cm3", "Sec 9, B.5.1 / A.5.3", "",
+          usul_T(gb.W, gb.Aw, TP["sisi_bawah" + kd], l_gading, e_web));
+        lap.baris("Gading besar - luas badan Aw", kd, "", gb.Aw, "cm2", "Sec 9, B.5.1");
+      }
+    } else {
+      lap.judul(`Pembujur sisi (side longitudinal) - bentang l = ${f2(BT.pembujur)} m`);
+      const zNA = 0.45 * H;
+      for (const [kd, , xL] of DAERAH) {
+        for (const z of [hDB + ap, (hDB + T) / 2, T, (T + H) / 2]) {
+          if (z >= H) continue;
+          const bs = beban_sisi(xL, z, 0.75), p_ = pmax(bs);
+          const sL = s_LB * abs(z - zNA) / max(zNA, H - zNA);
+          const pj = R.pembujur(L, ap, BT.pembujur, p_, k, sL, 1, true, miring ? bs.ps1 : null);
+          const tp = z <= T ? TP["sisi_bawah" + kd] : TP["sisi_atas" + kd];
+          lap.baris(`Pembujur sisi z=${f2(z)} m - W`, kd, `p=${f2(p_)}; sigma_L=${f2(sL)}; sigma_pr=${f2(pj.sigma_pr)}; m=${f2(pj.m)}`, pj.W, "cm3", "Sec 9, B.3.1", "",
+            usul(pj.W, pj.A, tp, ap));
+        }
+      }
+      lap.judul("Gading besar sisi (side transverse)");
+      for (const [kd] of DAERAH) {
+        const p_ = pmax(BEBAN[kd].gading_besar), gb = R.gading_besar_sisi(e_web, l_gading, p_, k);
+        lap.baris("Gading besar sisi - W", kd, `p=${f2(p_)}; e=${e_web}`, gb.W, "cm3", "Sec 9, B.5.1", "", usul_T(gb.W, gb.Aw, TP["sisi_bawah" + kd], l_gading, e_web));
+        lap.baris("Gading besar sisi - Aw", kd, "", gb.Aw, "cm2", "Sec 9, B.5.1");
+      }
+      const Pf = R.gaya_fender_Pf(disp), Wf = k * Pf / 16 * (BT.pembujur - 0.5) / 235 * 1e3;
+      lap.baris("Pembujur sisi - beban fender", "M", `Pf=${f2(Pf)} kN`, Wf, "cm3", "Sec 9, B.3.9-3.10");
+    }
+    lap.judul("Kamar mesin (buritan)");
+    const Hu = or(LN.kamar_mesin_Hu, H), bsA = BEBAN.A.gading_besar;
+    const gkm = R.gading_besar_kamar_mesin(e_web, l_gading, bsA.ps, k, H, Hu);
+    lap.baris("Gading besar kamar mesin - W", "A", `ps=${f2(bsA.ps)}; e=${e_web}; l=${f2(l_gading)}`, gkm.W, "cm3", "Sec 9, A.6.2.1", "",
+      usul_T(gkm.W, 0, TP.sisi_bawahA, l_gading, e_web, gkm.h_web_mm, gkm.I, gkm.t_web_mm));
+    lap.baris("Gading besar kamar mesin - I", "A", `ci=${f2(gkm.ci)}`, gkm.I, "cm4", "Sec 9, A.6.2.1");
+    lap.baris("Gading besar kamar mesin - tinggi badan", "A", "50 H >= 250", gkm.h_web_mm, "mm", "Sec 9, A.6.2.1");
+    lap.baris("Gading besar kamar mesin - tebal badan", "A", "h/(32+0,03h) >= 8", gkm.t_web_mm, "mm", "Sec 9, A.6.2.1", bulat(gkm.t_web_mm));
+    lap.catatan("Senta sisi kamar mesin (bila mesin di belakang) berukuran sama dengan gading besar (Sec 9, A.6.1.3).");
+
+    const l_c = BT.gading_ceruk;
+    lap.judul(`Gading ceruk (peak frame) - bentang l = ${f2(l_c)} m`);
+    for (const [nama, kd, xL_] of [["Ceruk haluan", "F", 0.97], ["Ceruk buritan", "A", 0.03]]) {
+      let z_ = l_c / 2, tier = 1;
+      while (z_ < H && tier < 40) {
+        const bs = beban_sisi(xL_, z_, 0.75), p_ = pmax(bs), g = R.gading_antara_bangunan_atas(a, l_c, p_, k);
+        lap.baris(`Gading ${nama.toLowerCase()} tier ${tier} - W`, kd, `z=${f2(z_)}; ${teks_sisi(bs)}`, g.W, "cm3", "Sec 9, A.4.1", "", usul(g.W, g.A, TP["sisi_bawah" + kd], a));
+        z_ += l_c; tier++;
+      }
+      const bs = beban_sisi(xL_, l_c, 0.6), p_ = pmax(bs), ws = R.gading_besar_senta_ceruk(e_web, l_c * 2, l_c * 2, p_, k);
+      lap.baris(`Gading besar / senta ${nama.toLowerCase()} - W`, kd, `p=${f2(p_)}; nc=${pyf(ws.nc)}`, ws.W, "cm3", "Sec 9, A.5.3.1", "",
+        usul_T(ws.W, ws.Aw, TP["sisi_bawah" + kd], l_c * 2, e_web));
+    }
+    const st = R.pelat_senta_tier_balok(L);
+    lap.baris("Pelat senta tier balok ceruk - lebar", "A/F", "75 sqrt(L)", st.b_mm, "mm", "Sec 9, A.5.2.1");
+    lap.baris("Pelat senta tier balok ceruk - tebal", "A/F", "6 + L/40", st.t_mm, "mm", "Sec 9, A.5.2.1", bulat(st.t_mm));
+
+    lap.judul("Gading bangunan atas");
+    for (const [nama, kd, xL_, h_] of [["Gading akil", "F", xL_akil, h_akil], ["Gading kimbul", "A", 0.10, h_kimbul]]) {
+      const bs = beban_sisi(xL_, H + h_ / 2, 0.75), p_ = pmax(bs), av = R.faktor_percepatan_av(L, v0, xL_);
+      const g = R.gading_antara_bangunan_atas(a, h_, p_, k, 1, 1, R.beban_geladak_akomodasi(av), BT.balok_geladak);
+      const tp = TP[kd === "F" ? "Sisi akil" : "Sisi kimbul"];
+      lap.baris(`${nama} - W`, kd, `z=${f2(H + h_ / 2)}; ${teks_sisi(bs)}`, g.W, "cm3", "Sec 9, A.3.2", "", usul(g.W, g.A, tp, a));
+    }
+    const lb = BT.balok_geladak, lg = BT.penumpu_geladak, eg = BT.lebar_beban_penumpu;
+    if (S.geladak === "melintang") {
+      lap.judul(`Balok geladak kekuatan (deck beam) - bentang l = ${f2(lb)} m`);
+      for (const [kd] of DAERAH) {
+        const p_ = BEBAN[kd].pD0_75 ?? BEBAN[kd]["pD0.75"], bg = R.balok_geladak(a, lb, p_, k);
+        MOD["balok" + kd] = bg.W;
+        lap.baris("Balok geladak - W", kd, `pD=${f2(p_)}; c=${bg.c}; m=${f2(bg.m)}`, bg.W, "cm3", "Sec 10, B.1", "", usul(bg.W, bg.A, TP["geladak" + kd], a));
+      }
+    } else {
+      lap.judul(`Pembujur geladak kekuatan - bentang l = ${f2(BT.pembujur)} m`);
+      for (const [kd] of DAERAH) {
+        const p_ = BEBAN[kd]["pD0.75"], pj = R.pembujur(L, ap, BT.pembujur, p_, k, s_LB);
+        MOD["balok" + kd] = pj.W;
+        lap.baris("Pembujur geladak - W", kd, `pD=${f2(p_)}; sigma_pr=${f2(pj.sigma_pr)}`, pj.W, "cm3", "Sec 9, B.3.1", "", usul(pj.W, pj.A, TP["geladak" + kd], ap));
+      }
+      lap.judul("Balok besar geladak (deck transverse)");
+      for (const [kd] of DAERAH) {
+        const p_ = BEBAN[kd]["pD0.6"], pg = R.penumpu_geladak(e_web, lb, p_, k);
+        lap.baris("Balok besar geladak - W", kd, `pD=${f2(p_)}; e=${e_web}; l=${f2(lb)}`, pg.W, "cm3", "Sec 10, B.4.1", "",
+          usul_T(pg.W, pg.Aw, TP["geladak" + kd], lb, e_web, pg.h_min_mm, pg.I));
+      }
+    }
+    lap.judul(`Penumpu geladak (deck girder) - bentang l = ${f2(lg)} m, e = ${f2(eg)} m`);
+    for (const [kd] of DAERAH) {
+      const p_ = BEBAN[kd]["pD0.6"], pg = R.penumpu_geladak(eg, lg, p_, k);
+      lap.baris("Penumpu geladak - W", kd, `pD=${f2(p_)}; c=${pg.c}; I=${pg.I.toFixed(0)} cm4`, pg.W, "cm3", "Sec 10, B.4.1", "",
+        usul_T(pg.W, pg.Aw, TP["geladak" + kd], lg, eg, pg.h_min_mm, pg.I));
+      lap.baris("Penumpu geladak - Aw / tinggi min", kd, `h >= l/25 = ${pg.h_min_mm.toFixed(0)} mm`, pg.Aw, "cm2", "Sec 10, B.4.1-4.2");
+    }
+    const A_pil = lg * eg, dp = [];
+    if (z_antara) {
+      const Pa = BEBAN.M["pD0.6"] * A_pil;
+      dp.push(["Pilar geladak antara (atas)", Pa, or(LN.pilar_panjang, H - z_antara), `Ps=pD.A=${f2(Pa)} kN`]);
+      const Pb = BEBAN.M.pL * A_pil + Pa;
+      dp.push(["Pilar ruang muat (bawah)", Pb, z_antara - hDB, `Ps=pL.A+Pi=${f2(Pb)} kN`]);
+    } else {
+      const P_ = BEBAN.M["pD0.6"] * A_pil;
+      dp.push(["Pilar ruang muat", P_, or(LN.pilar_panjang, H - hDB), `Ps=pD.A=${f2(P_)} kN`]);
+    }
+    for (const [nama, Ps, lp, rin] of dp) {
+      const [da, tp, hp] = P.pilih_pipa_pilar(Ps, lp, ReH, false);
+      if (da) lap.baris(`${nama} - luas perlu`, "M", `${rin}; A=${f2(A_pil)} m2; l=${f2(lp)}; lambda=${f2(hp.lambda)}; kappa=${f2(hp.kappa)}; sigma_p=${f2(hp.sigma_p)}; tw min=${f2(hp.tw_min)}`,
+        hp.As_perlu, "cm2", "Sec 10, C.2", Math.round(hp.As * 10) / 10, `Pipa ${da} x ${tp}`);
+      else lap.baris(`${nama} - luas perlu`, "M", `${rin}; tidak ada pipa di katalog yang cukup`, 10 * Ps / (ReH / 2), "cm2", "Sec 10, C.2");
+    }
+    if (z_antara) {
+      lap.judul("Geladak antara - balok & penumpu");
+      for (const [kd] of DAERAH) {
+        const p_ = BEBAN[kd].pL, bg = R.balok_geladak(a, lb, p_, k);
+        lap.baris("Balok geladak antara - W", kd, `pL=${f2(p_)}`, bg.W, "cm3", "Sec 10, B.1", "", usul(bg.W, bg.A, TP["antara" + kd], a));
+        const pg = R.penumpu_geladak(eg, lg, p_, k);
+        lap.baris("Penumpu geladak antara - W", kd, `pL=${f2(p_)}`, pg.W, "cm3", "Sec 10, B.4.1", "", usul_T(pg.W, pg.Aw, TP["antara" + kd], lg, eg, pg.h_min_mm, pg.I));
+      }
+    }
+    lap.judul("Konstruksi alas - gading / pembujur");
+    if (!dasar_ganda) {
+      const at = R.alas_tunggal(B, T, a, B, k, !!M_.ruang_kosong_saat_muatan_penuh);
+      lap.baris("Wrang alas tunggal - W", "M", `c.T.e.l^2; e=${a}; l=B=${f2(B)}`, at.W_wrang, "cm3", "Sec 8, A.1.2.1", "", usul_T(at.W_wrang, 0, TP.alasM, B, a, at.h_wrang_mm));
+    }
+    if (dasar_ganda && S.alas === "melintang") {
+      const n_sg = R.jumlah_penumpu_samping(B), l_wt = or(BT.wrang_terbuka, B / 2 / (n_sg + 1));
+      for (const [kd] of DAERAH) {
+        const pBf = BEBAN[kd]["pB0.75"].p, W_ga = R.wrang_terbuka_modulus(0.7, a, l_wt, pBf, k);
+        lap.baris("Gading alas (wrang terbuka) - W", kd, `n=0,70; p=pB=${f2(pBf)}; l=${f2(l_wt)}`, W_ga, "cm3", "Sec 8, B.6.4.3", "", usul(W_ga, 0, TP["alas" + kd], a));
+        const cand = [[0.55, BEBAN[kd].pi, "pi"], [0.55, 10 * (T - hDB), "10(T-hDB)"]];
+        if (TG.ada) cand.push([0.55, BEBAN[kd].p1_atas, "p1"], [0.44, BEBAN[kd].p2_atas, "p2"]);
+        let best = null;
+        for (const [n, p, s] of cand) { const t = [R.wrang_terbuka_modulus(n, a, l_wt, p, k), n, p, s]; if (!best || cmpTuple(t, best) > 0) best = t; }
+        const [W_gb, n_, p_, nm_p] = best;
+        lap.baris("Gading balik (wrang terbuka) - W", kd, `n=${n_}; p=${nm_p}=${f2(p_)}; l=${f2(l_wt)}`, W_gb, "cm3", "Sec 8, B.6.4.3", "", usul(W_gb, 0, TP["alas_dalam" + kd], a));
+      }
+    } else if (dasar_ganda) {
+      const lb_ = BT.pembujur;
+      for (const [kd, , xL] of DAERAH) {
+        const b_ = BEBAN[kd], pBf = b_["pB0.75"].p;
+        let p_ = pBf, rin = `pB=${f2(pBf)}`, W2 = 0;
+        if (TG.ada) {
+          const cF = R.faktor_distribusi_cF(xL, CB), ptk = min(b_.p1_alas, b_.p1_alas - (10 * Tmin - p0[0.75] * cF));
+          p_ = max(pBf, ptk);
+          W2 = 0.44 * R.faktor_m(ap, lb_) * ap * lb_ * lb_ * b_.p2_alas * k;
+          rin += `; p1 tangki=${f2(ptk)}; W2(p2)=${f2(W2)}`;
+        }
+        let pj = R.pembujur(L, ap, lb_, p_, k, s_LB), W = max(pj.W, W2);
+        lap.baris("Pembujur alas - W", kd, rin + `; sigma_pr=${f2(pj.sigma_pr)}`, W, "cm3", "Sec 9 B.3 / Sec 12 B.3", "", usul(W, pj.A, TP["alas" + kd], ap));
+        let p_ib = max(b_.pi, 10 * (T - hDB)), W2i = 0;
+        if (TG.ada) { p_ib = max(p_ib, b_.p1_atas); W2i = 0.44 * R.faktor_m(ap, lb_) * ap * lb_ * lb_ * b_.p2_atas * k; }
+        pj = R.pembujur(L, ap, lb_, p_ib, k, s_LB * 0.8); W = max(pj.W, W2i);
+        lap.baris("Pembujur alas dalam - W", kd, `p=${f2(p_ib)}; W2(p2)=${f2(W2i)}`, W, "cm3", "Sec 9 B.3 / Sec 12 B.3", "", usul(W, pj.A, TP["alas_dalam" + kd], ap));
+      }
+      lap.catatan("Bila pembujur alas & alas dalam dihubungkan strut di tengah bentang, W boleh 60% (Sec 8, B.7.2.2).");
+    }
+    if (dasar_ganda) {
+      const wr = KA.wrang, e_wr = S.alas === "melintang" ? J.jarak_wrang_pelat : e_web;
+      lap.baris("Wrang pelat - luas badan Aw (di sisi kapal)", "M", `eps=${wr.eps}; T=${f2(T)}; l=B; e=${f2(e_wr)}; y=0`, wr.Aw_tumpuan, "cm2", "Sec 8, B.6.2.2");
+      lap.baris("Wrang pelat - luas badan Aw (y = 0,4 l)", "M", "", wr["Aw_0.4l"], "cm2", "Sec 8, B.6.2.2");
+      lap.catatan(`Luas badan wrang bersih (hDB dikurangi lubang peringan) x t_wrang ${pyf(TP.wrang)} mm harus >= Aw di atas.`);
+      if (TG.ada) {
+        const bM = BEBAN.M, wk = R.konstruksi_tangki(L, a, hDB, bM.p1_tgh, bM.p2_tgh, k);
+        lap.baris("Penegar wrang kedap air - W", "M", `p1=${f2(bM.p1_tgh)}; p2=${f2(bM.p2_tgh)}; l=hDB`, wk.W, "cm3", "Sec 8 B.6.3.2 / Sec 12 B.3.1", "",
+          usul(wk.W, wk.Aw, TP.wrang_kedap ?? 8, a));
+      }
+    }
+    if (pSL > 0) {
+      let l_sl = or(BT.penegar_alas_haluan, S.alas === "melintang" ? a : 3 * a);
+      if (S.alas === "melintang" && dasar_ganda) l_sl = or(BT.penegar_alas_haluan, min(L / 250 + 0.9, 1.4));
+      const ps_ = R.penegar_alas_haluan(pSL, a_alas, l_sl, k);
+      lap.baris("Penegar alas haluan (slamming) - W", "F", `pSL=${f2(pSL)}; a=${a_alas}; l=${f2(l_sl)}`, ps_.W, "cm3", "Sec 6, E.3.1", "",
+        usul(ps_.W, ps_.A, TP.alas_haluan ?? TP.alasF, a_alas));
+      lap.baris("Penegar alas haluan - luas geser", "F", "", ps_.A, "cm2", "Sec 6, E.3.2");
+    }
+    lap.judul(`Penegar sekat kedap air (tumpuan: ${SK.tumpuan_penegar})`);
+    for (const [jenis, tub] of SEKAT) {
+      const z_top = tub ? or(SK.z_atas_sekat_tubrukan, H) : H, z_bot = tub ? 0 : hDB, l_s = z_top - z_bot;
+      const h_pen = z_top + 1 - (z_bot + l_s / 2);
+      const sk = R.sekat_kedap_air(a_sk, l_s, h_pen, h_pen, ReH, k, tub, SK.tumpuan_penegar);
+      MOD[jenis] = sk.W;
+      lap.baris(`Penegar ${jenis.toLowerCase()} - W`, "", `l=${f2(l_s)}; h=${f2(h_pen)}; p=${f2(sk.p_penegar)}; cs=${f2(sk.cs)}; m=${f2(sk.m)}`, sk.W, "cm3", "Sec 11, B.3.1", "",
+        usul(sk.W, 0, TP[jenis + 1] ?? 8, a_sk));
+    }
+    lap.catatan("Penumpu sekat (primary supporting members) dihitung dengan perhitungan langsung (Sec 11, B.5).");
+    lap.judul("Bangunan atas - balok geladak & penegar dinding");
+    const lbr = BA.bentang_balok_rumah;
+    for (const [nama, kd, , , f, pDA] of BA_DECK) {
+      if (f !== 0.75) continue;
+      const bg = R.balok_geladak(a, lbr, pDA, k);
+      lap.baris(`Balok ${nama.toLowerCase()} - W`, kd, `pDA=${f2(pDA)}; l=${f2(lbr)}`, bg.W, "cm3", "Sec 10, B.1", "", usul(bg.W, bg.A, TP[nama] ?? 6, a));
+    }
+    for (const [tr, pos, r_] of DINDING) {
+      const dd = R.dinding_rumah_geladak(L, a_dd, tr.tinggi, r_.pA, k, tr.tingkat);
+      lap.baris(`Penegar ${tr.nama.toLowerCase()} - ${pos}`, "A", `pA=${f2(r_.pA)}; l=${f2(max(tr.tinggi, 2))}`, dd.W, "cm3", "Sec 16, C.3.1", "",
+        usul(dd.W, 0, TP[tr.nama + "|" + pos], a_dd));
+    }
+    lap.judul("Kubu-kubu (bulwark)");
+    for (const [kd, , xL] of DAERAH) {
+      const bs = beban_sisi(xL, H + LN.kubu_tinggi / 2, 1), p_ = pmax(bs);
+      const Wk = R.modulus_stay_kubu_kubu(p_, LN.kubu_jarak_stay, LN.kubu_tinggi);
+      lap.baris("Stay kubu-kubu - W", kd, `p=${f2(max(p_, 15))}; e=${LN.kubu_jarak_stay}; l=${LN.kubu_tinggi}`, Wk, "cm3", "Sec 6, K.4");
+    }
+    lap.judul("Braket (bracket)");
+    for (const [kd] of DAERAH) {
+      if (MOD["gading" + kd] !== undefined) {
+        let br = R.braket(MOD["gading" + kd], k, k);
+        lap.baris("Braket gading utama - alas", kd, `W=${f2(MOD["gading" + kd])}; l lengan=${br.l_mm.toFixed(0)} mm`, br.t, "mm", "Sec 3, D.2", bulat(br.t));
+        const Wg = min(MOD["gading" + kd], MOD["balok" + kd]);
+        br = R.braket(Wg, k, k);
+        lap.baris("Braket gading - balok geladak", kd, `W=${f2(Wg)}; l lengan=${br.l_mm.toFixed(0)} mm`, br.t, "mm", "Sec 3, D.2", bulat(br.t));
+      }
+    }
+    for (const [jenis] of SEKAT) {
+      const br = R.braket(MOD[jenis], k, k);
+      lap.baris(`Braket penegar ${jenis.toLowerCase()}`, "", `W=${f2(MOD[jenis])}; l lengan=${br.l_mm.toFixed(0)} mm`, br.t, "mm", "Sec 3, D.2", bulat(br.t));
+    }
+    lap.catatan("Lebar flens braket (bila berflens) = 40 + W/30, antara 50-90 mm (Sec 3, D.2.5).");
+    return lap;
+  }
+
+  const api = { R, P, LJ, hitung, Laporan };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.BKI = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+<script>
+(function () {
+"use strict";
+const $ = s => document.querySelector(s);
+const DEFAULT = {"KAPAL": {"nama": "MV CONTOH - General Cargo", "L": 85.0, "B": 14.6, "H": 7.5, "T": 6.0, "CB": 0.72, "v0": 12.0, "daerah_pelayaran": "unlimited", "ReH": 235, "displacement": null, "Tb": 2.6, "Tmin": 2.6, "beban_miring": true}, "SISTEM": {"alas": "melintang", "sisi": "melintang", "geladak": "melintang"}, "JARAK": {"a": 0.6, "a_pembujur": 0.65, "e_gading_besar": 2.4, "jarak_wrang_pelat": 1.8, "hDB": 1.1}, "GELADAK": {"z_geladak_antara": null, "lebar_palka": 8.0, "panjang_palka": 14.4, "muatan_geladak_pc": null, "tinggi_muatan_geladak": null}, "BENTANG": {"gading_utama": null, "lKu": 0.5, "lKo": 0.4, "balok_geladak": 3.3, "penumpu_geladak": 4.8, "lebar_beban_penumpu": 3.6, "pembujur": 2.4, "gading_ceruk": 2.6, "wrang_terbuka": null, "penegar_alas_haluan": null}, "MUATAN": {"G_per_V": 0.7, "tinggi_muatan": null, "tanpa_ceiling": false, "ruang_kosong_saat_muatan_penuh": false}, "TANGKI_DASAR_GANDA": {"ada": true, "rho": 1.025, "z_puncak_pipa_limpah": null, "pv": 0.0}, "SEKAT": {"lebar_lajur_pelat": 1.8, "jarak_penegar": 0.6, "tumpuan_penegar": "jepit_bebas", "z_atas_sekat_tubrukan": null}, "BANGUNAN_ATAS": {"akil": {"tinggi": 2.4, "x_belakang_L": 0.9}, "kimbul": {"tinggi": 2.4, "x_depan_L": 0.22, "x_belakang_L": 0.0}, "rumah_geladak": [{"nama": "Boat deck", "tingkat": 2, "x_depan_L": 0.2, "lebar": 11.0, "tinggi": 2.4, "x_belakang_L": 0.08}, {"nama": "Navigation deck", "tingkat": 3, "x_depan_L": 0.19, "lebar": 9.0, "tinggi": 2.4, "x_belakang_L": 0.1}], "jarak_penegar_dinding": 0.6, "bentang_balok_rumah": 2.8}, "LAIN": {"kubu_tinggi": 1.0, "kubu_jarak_stay": 1.2, "kamar_mesin_Hu": null, "pilar_panjang": null, "pembulatan_tebal": 0.5}, "LAJUR": {"jari_jari_bilga": 1.2, "sama_semua_daerah": true, "M": [{"nama": "K", "jenis": "lunas", "lebar": 1250}, {"nama": "A1", "jenis": "alas", "lebar": 1750}, {"nama": "A2", "jenis": "alas", "lebar": 1750}, {"nama": "A3", "jenis": "alas", "lebar": 1825}, {"nama": "B", "jenis": "bilga", "lebar": 2200}, {"nama": "S1", "jenis": "sisi", "lebar": 1600}, {"nama": "S2", "jenis": "sisi", "lebar": 1600}, {"nama": "S3", "jenis": "sisi", "lebar": 1685}, {"nama": "SH", "jenis": "lajur_atas", "lebar": 1250}], "A": null, "F": null}};
+const STORE_KEY = "bki-hull-input-v1";
+
+// ---------------------------------------------------------------- schema
+// [grup, kunci, label, satuan, tipe, opsi]   tipe: n=angka, o=angka opsional (kosong = otomatis), s=select, c=centang, t=teks
+const GROUPS = [
+  { id: "utama", title: "Ukuran utama", sec: "Sec 1", open: true, fields: [
+    ["KAPAL", "nama", "Nama kapal", "", "t", { wide: true }],
+    ["KAPAL", "L", "Panjang L", "m", "n", { min: 20, max: 500, step: 0.1 }],
+    ["KAPAL", "B", "Lebar B", "m", "n", { min: 3, max: 80, step: 0.1 }],
+    ["KAPAL", "H", "Tinggi H", "m", "n", { min: 1.5, max: 40, step: 0.05 }],
+    ["KAPAL", "T", "Sarat T", "m", "n", { min: 0.5, max: 30, step: 0.05 }],
+    ["KAPAL", "CB", "Koef. blok CB", "", "n", { min: 0.35, max: 0.95, step: 0.01 }],
+    ["KAPAL", "v0", "Kecepatan v0", "knot", "n", { min: 1, max: 40, step: 0.1 }],
+    ["KAPAL", "daerah_pelayaran", "Daerah pelayaran", "", "s", { opts: [["unlimited", "Tak terbatas"], ["P", "P – Restricted ocean"], ["L", "L – Coasting"], ["T", "T – Sheltered water"]] }],
+    ["KAPAL", "ReH", "Baja ReH", "N/mm²", "s", { opts: [[235, "235 (KI-A, k=1,00)"], [315, "315 (AH32, k=0,78)"], [355, "355 (AH36, k=0,72)"], [390, "390 (AH40, k=0,68)"]], num: true }],
+    ["KAPAL", "Tb", "Sarat ballast di FP Tb", "m", "n", { min: 0.2, step: 0.05 }],
+    ["KAPAL", "Tmin", "Sarat ballast min", "m", "n", { min: 0.2, step: 0.05 }],
+    ["KAPAL", "displacement", "Displacement", "ton", "o", { ph: "1,025·L·B·T·CB", wide: true }],
+    ["KAPAL", "beban_miring", "Hitung beban gelombang melintang & oleng (ps1, pB1)", "", "c", {}],
+  ]},
+  { id: "sistem", title: "Sistem konstruksi & jarak", sec: "Sec 8–9", open: true, fields: [
+    ["SISTEM", "alas", "Sistem alas", "", "s", { opts: [["melintang", "Melintang"], ["memanjang", "Memanjang"]] }],
+    ["SISTEM", "sisi", "Sistem sisi", "", "s", { opts: [["melintang", "Melintang"], ["memanjang", "Memanjang"]] }],
+    ["SISTEM", "geladak", "Sistem geladak", "", "s", { opts: [["melintang", "Melintang"], ["memanjang", "Memanjang"]] }],
+    ["JARAK", "a", "Jarak gading a", "m", "n", { min: 0.3, max: 1.2, step: 0.01 }],
+    ["JARAK", "a_pembujur", "Jarak pembujur", "m", "n", { min: 0.3, max: 1.2, step: 0.01 }],
+    ["JARAK", "e_gading_besar", "Jarak gading besar e", "m", "n", { min: 0.6, step: 0.1 }],
+    ["JARAK", "jarak_wrang_pelat", "Jarak wrang pelat", "m", "n", { min: 0.3, step: 0.1 }],
+    ["JARAK", "hDB", "Tinggi dasar ganda hDB", "m", "o", { ph: "kosong = alas tunggal", step: 0.05 }],
+  ]},
+  { id: "lajur", title: "Lajur pelat kulit (lebar & z)", sec: "Sec 6", fields: [
+    ["LAJUR", "jari_jari_bilga", "Jari-jari bilga R", "m", "o", { ph: "0,08·B", step: 0.05 }],
+    ["LAJUR", "sama_semua_daerah", "Lebar lajur sama untuk daerah A, M, F", "", "c", {}],
+    ["__lajur"],
+  ]},
+  { id: "geladak", title: "Geladak & palka", sec: "Sec 7", fields: [
+    ["GELADAK", "z_geladak_antara", "Tinggi geladak antara", "m", "o", { ph: "tidak ada" }],
+    ["GELADAK", "lebar_palka", "Lebar palka", "m", "n", { step: 0.1 }],
+    ["GELADAK", "panjang_palka", "Panjang palka", "m", "n", { step: 0.1 }],
+    ["GELADAK", "muatan_geladak_pc", "Muatan geladak pc", "kN/m²", "o", { ph: "tidak ada" }],
+    ["GELADAK", "tinggi_muatan_geladak", "Tinggi muatan geladak", "m", "o", { ph: "–" }],
+  ]},
+  { id: "bentang", title: "Bentang komponen", sec: "Sec 3 C", fields: [
+    ["BENTANG", "gading_utama", "Bentang gading utama", "m", "o", { ph: "otomatis" }],
+    ["BENTANG", "lKu", "Braket bawah lKu", "m", "n", { step: 0.05 }],
+    ["BENTANG", "lKo", "Braket atas lKo", "m", "n", { step: 0.05 }],
+    ["BENTANG", "balok_geladak", "Bentang balok geladak", "m", "n", { step: 0.05 }],
+    ["BENTANG", "penumpu_geladak", "Bentang penumpu geladak", "m", "n", { step: 0.1 }],
+    ["BENTANG", "lebar_beban_penumpu", "Lebar beban penumpu e", "m", "n", { step: 0.1 }],
+    ["BENTANG", "pembujur", "Bentang pembujur", "m", "n", { step: 0.1 }],
+    ["BENTANG", "gading_ceruk", "Jarak tier ceruk", "m", "n", { step: 0.1 }],
+    ["BENTANG", "wrang_terbuka", "Bentang gading alas wrang terbuka", "m", "o", { ph: "otomatis" }],
+    ["BENTANG", "penegar_alas_haluan", "Bentang penegar alas haluan", "m", "o", { ph: "otomatis" }],
+  ]},
+  { id: "muatan", title: "Muatan & tangki dasar ganda", sec: "Sec 4 C–D", fields: [
+    ["MUATAN", "G_per_V", "Muatan G/V", "t/m³", "n", { step: 0.05 }],
+    ["MUATAN", "tinggi_muatan", "Tinggi muatan", "m", "o", { ph: "H − hDB" }],
+    ["MUATAN", "tanpa_ceiling", "Alas dalam tanpa papan ceiling (+2 mm)", "", "c", {}],
+    ["MUATAN", "ruang_kosong_saat_muatan_penuh", "Ruang kosong saat muatan penuh (mis. kamar mesin)", "", "c", {}],
+    ["TANGKI_DASAR_GANDA", "ada", "Dasar ganda dipakai tangki ballast", "", "c", {}],
+    ["TANGKI_DASAR_GANDA", "rho", "Massa jenis isi", "t/m³", "n", { step: 0.005 }],
+    ["TANGKI_DASAR_GANDA", "z_puncak_pipa_limpah", "Ujung pipa limpah dari BL", "m", "o", { ph: "H + 0,76" }],
+    ["TANGKI_DASAR_GANDA", "pv", "Tekanan katup pv", "bar", "n", { step: 0.05 }],
+  ]},
+  { id: "sekat", title: "Sekat kedap air", sec: "Sec 11", fields: [
+    ["SEKAT", "lebar_lajur_pelat", "Lebar lajur pelat", "m", "n", { step: 0.1 }],
+    ["SEKAT", "jarak_penegar", "Jarak penegar", "m", "n", { step: 0.01 }],
+    ["SEKAT", "tumpuan_penegar", "Tumpuan penegar", "", "s", { opts: [["jepit_keduanya", "Jepit kedua ujung"], ["jepit_bebas", "Jepit – bebas"], ["bebas_keduanya", "Bebas kedua ujung"]], wide: true }],
+    ["SEKAT", "z_atas_sekat_tubrukan", "Tepi atas sekat tubrukan", "m", "o", { ph: "H" }],
+  ]},
+  { id: "ba", title: "Bangunan atas & rumah geladak", sec: "Sec 16", fields: [
+    ["BANGUNAN_ATAS.akil", "tinggi", "Tinggi akil", "m", "n", { step: 0.05 }],
+    ["BANGUNAN_ATAS.akil", "x_belakang_L", "Ujung belakang akil x/L", "", "n", { step: 0.01 }],
+    ["BANGUNAN_ATAS.kimbul", "tinggi", "Tinggi kimbul", "m", "n", { step: 0.05 }],
+    ["BANGUNAN_ATAS.kimbul", "x_depan_L", "Dinding depan kimbul x/L", "", "n", { step: 0.01 }],
+    ["BANGUNAN_ATAS", "jarak_penegar_dinding", "Jarak penegar dinding", "m", "n", { step: 0.01 }],
+    ["BANGUNAN_ATAS", "bentang_balok_rumah", "Bentang balok rumah geladak", "m", "n", { step: 0.05 }],
+    ["__tiers"],
+  ]},
+  { id: "lain", title: "Lain-lain", sec: "", fields: [
+    ["LAIN", "kubu_tinggi", "Tinggi kubu-kubu", "m", "n", { step: 0.05 }],
+    ["LAIN", "kubu_jarak_stay", "Jarak stay kubu-kubu", "m", "n", { step: 0.05 }],
+    ["LAIN", "kamar_mesin_Hu", "Tinggi s/d geladak terbawah KM", "m", "o", { ph: "H" }],
+    ["LAIN", "pilar_panjang", "Panjang pilar", "m", "o", { ph: "otomatis" }],
+    ["LAIN", "pembulatan_tebal", "Pembulatan tebal", "mm", "s", { opts: [[0.5, "0,5 mm"], [1, "1 mm"]], num: true }],
+  ]},
+];
+
+let state = load() || clone(DEFAULT);
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function load() {
+  try { const s = localStorage.getItem(STORE_KEY); if (s) return merge(clone(DEFAULT), JSON.parse(s)); } catch (e) {}
+  return null;
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); flash($("#saveState"), "Tersimpan di browser"); } catch (e) {} }
+function merge(base, o) {
+  for (const k in o) {
+    if (o[k] && typeof o[k] === "object" && !Array.isArray(o[k]) && base[k] && typeof base[k] === "object") merge(base[k], o[k]);
+    else base[k] = o[k];
+  }
+  return base;
+}
+function getObj(path) { return path.split(".").reduce((o, k) => o[k], state); }
+
+// ---------------------------------------------------------------- form
+const form = $("#form");
+function buildForm() {
+  form.innerHTML = "";
+  for (const g of GROUPS) {
+    const d = document.createElement("details");
+    d.className = "grp"; d.open = !!g.open; d.id = "g-" + g.id;
+    d.innerHTML = `<summary><span>${g.title}</span><span class="sec">${g.sec}</span></summary>`;
+    const box = document.createElement("div"); box.className = "fields";
+    for (const f of g.fields) {
+      if (f[0] === "__tiers") { box.appendChild(buildTiers()); continue; }
+      if (f[0] === "__lajur") { box.appendChild(buildLajur()); continue; }
+      box.appendChild(buildField(f));
+    }
+    d.appendChild(box); form.appendChild(d);
+  }
+}
+function buildField([path, key, label, unit, type, o]) {
+  const obj = getObj(path), id = ("f-" + path + "-" + key).replace(/\./g, "_");
+  const w = document.createElement("div");
+  w.className = "field" + (o.wide ? " wide" : "") + (type === "c" ? " check" : "");
+  const v = obj[key];
+  if (type === "c") {
+    w.innerHTML = `<input type="checkbox" id="${id}" ${v ? "checked" : ""}><label for="${id}">${label}</label>`;
+    w.querySelector("input").addEventListener("change", e => { obj[key] = e.target.checked; if (path === "LAJUR") rebuildLajur(); changed(); });
+    return w;
+  }
+  const lab = `<label for="${id}"><span>${label}</span><span class="u">${unit}</span></label>`;
+  if (type === "s") {
+    const opts = o.opts.map(([val, t]) => `<option value="${val}" ${String(val) === String(v) ? "selected" : ""}>${t}</option>`).join("");
+    w.innerHTML = lab + `<select id="${id}">${opts}</select>`;
+    w.querySelector("select").addEventListener("change", e => { obj[key] = o.num ? Number(e.target.value) : e.target.value; changed(); });
+    return w;
+  }
+  if (type === "t") {
+    w.innerHTML = lab + `<input type="text" id="${id}" value="${esc(v ?? "")}">`;
+    w.querySelector("input").addEventListener("input", e => { obj[key] = e.target.value; changed(); });
+    return w;
+  }
+  const attrs = `${o.min !== undefined ? `min="${o.min}"` : ""} ${o.max !== undefined ? `max="${o.max}"` : ""} step="${o.step || "any"}"`;
+  w.innerHTML = lab + `<input type="number" inputmode="decimal" id="${id}" ${attrs} value="${v ?? ""}" placeholder="${o.ph || ""}">`;
+  const inp = w.querySelector("input");
+  inp.addEventListener("input", () => {
+    const raw = inp.value.trim();
+    if (raw === "") {
+      if (type === "o") { obj[key] = null; inp.classList.remove("bad"); if (path === "LAJUR") refreshLajurInfo(); changed(); }
+      else inp.classList.add("bad");
+      return;
+    }
+    const n = Number(raw);
+    const bad = !isFinite(n) || (o.min !== undefined && n < o.min) || (o.max !== undefined && n > o.max);
+    inp.classList.toggle("bad", bad);
+    if (!bad) { obj[key] = n; if (path === "LAJUR") refreshLajurInfo(); changed(); }
+  });
+  return w;
+}
+function buildTiers() {
+  const box = document.createElement("div"); box.className = "tiers";
+  const list = state.BANGUNAN_ATAS.rumah_geladak;
+  const head = document.createElement("div");
+  head.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px";
+  head.innerHTML = `<span style="font-size:12px;color:var(--muted)">Rumah geladak di atas kimbul (tingkat 2 ke atas)</span>`;
+  const add = document.createElement("button"); add.type = "button"; add.className = "small"; add.textContent = "Tambah tingkat";
+  add.addEventListener("click", () => {
+    const last = list[list.length - 1];
+    list.push({ nama: `Tingkat ${list.length + 2}`, tingkat: (last ? last.tingkat : 1) + 1, x_depan_L: last ? last.x_depan_L : 0.2,
+      x_belakang_L: last ? last.x_belakang_L : 0.08, lebar: last ? Math.max(last.lebar - 1.5, 3) : state.KAPAL.B * 0.7, tinggi: 2.4 });
+    rebuildTiers(); changed();
+  });
+  head.appendChild(add); box.appendChild(head);
+  list.forEach((t, i) => {
+    const r = document.createElement("div"); r.className = "tier";
+    const fld = (k, lab, u, typ = "number", cls = "") => {
+      const id = `tier-${i}-${k}`;
+      return `<div class="field ${cls}"><label for="${id}"><span>${lab}</span><span class="u">${u}</span></label>
+        <input type="${typ}" id="${id}" data-k="${k}" value="${esc(t[k])}" ${typ === "number" ? 'step="any" inputmode="decimal"' : ""}></div>`;
+    };
+    r.innerHTML = fld("nama", "Nama geladak", "", "text", "name") + fld("tingkat", "Tingkat", "") +
+      fld("x_depan_L", "Depan x/L", "") + fld("x_belakang_L", "Belakang x/L", "") + fld("lebar", "Lebar", "m") +
+      fld("tinggi", "Tinggi", "m") + `<button type="button" class="small ghost rm">Hapus</button>`;
+    r.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
+      const k = inp.dataset.k;
+      if (k === "nama") { t[k] = inp.value; changed(); return; }
+      const n = Number(inp.value);
+      const bad = inp.value.trim() === "" || !isFinite(n) || n < 0;
+      inp.classList.toggle("bad", bad);
+      if (!bad) { t[k] = k === "tingkat" ? Math.max(2, Math.round(n)) : n; changed(); }
+    }));
+    r.querySelector(".rm").addEventListener("click", () => { list.splice(i, 1); rebuildTiers(); changed(); });
+    box.appendChild(r);
+  });
+  box.id = "tiersBox";
+  return box;
+}
+function rebuildTiers() { const old = $("#tiersBox"); old.replaceWith(buildTiers()); }
+// ---------------------------------------------------------------- editor lajur
+let ljReg = "M";
+const JENIS_OPTS = [["lunas", "Lunas"], ["alas", "Alas"], ["bilga", "Bilga"], ["sisi", "Sisi"], ["lajur_atas", "Lajur atas"]];
+function ljList(reg) {
+  const LJ = state.LAJUR;
+  if (LJ.sama_semua_daerah !== false || reg === "M") { if (!LJ.M || !LJ.M.length) LJ.M = autoLajur(); return LJ.M; }
+  if (!LJ[reg] || !LJ[reg].length) LJ[reg] = clone(LJ.M && LJ.M.length ? LJ.M : autoLajur());
+  return LJ[reg];
+}
+function geomR() { return BKI.LJ.jari_jari_bilga(state.KAPAL.B, state.LAJUR.jari_jari_bilga); }
+function autoLajur() { const K = state.KAPAL; return BKI.LJ.rencana_otomatis(K.L, K.B, K.H, geomR()); }
+function buildLajur() {
+  const box = document.createElement("div"); box.className = "lj"; box.id = "ljBox";
+  const same = state.LAJUR.sama_semua_daerah !== false;
+  if (same) ljReg = "M";
+  const list = ljList(ljReg);
+  let html = "";
+  if (!same) html += `<div class="lj-reg" role="group" aria-label="Daerah">${["A", "M", "F"].map(r =>
+    `<button type="button" class="small" data-reg="${r}" aria-pressed="${r === ljReg}">Daerah ${r}</button>`).join("")}</div>`;
+  html += `<p class="hint" style="margin:0;font-size:11.5px;color:var(--muted)">Urut dari CL ke geladak. Lebar diukur sepanjang keliling penampang; lunas ditulis lebar penuh (simetris CL). z dihitung otomatis.</p>`;
+  html += `<div style="overflow-x:auto"><table class="lj-tbl"><thead><tr><th>Nama</th><th>Jenis</th><th style="text-align:right">Lebar mm</th><th style="text-align:right">z bawah–atas</th><th></th></tr></thead><tbody>`;
+  list.forEach((r, i) => {
+    html += `<tr data-i="${i}"><td style="width:16%"><input type="text" data-k="nama" value="${esc(r.nama)}" aria-label="Nama lajur ${i + 1}"></td>
+      <td style="width:30%"><select data-k="jenis" aria-label="Jenis lajur ${i + 1}">${JENIS_OPTS.map(([v, t]) => `<option value="${v}" ${v === r.jenis ? "selected" : ""}>${t}</option>`).join("")}</select></td>
+      <td style="width:22%"><input type="number" step="50" min="100" inputmode="numeric" data-k="lebar" value="${r.lebar}" aria-label="Lebar lajur ${i + 1}"></td>
+      <td class="z" data-z="${i}"></td>
+      <td style="white-space:nowrap"><button type="button" class="ic ghost" data-act="up" aria-label="Naikkan">↑</button><button type="button" class="ic ghost" data-act="rm" aria-label="Hapus">✕</button></td></tr>`;
+  });
+  html += `</tbody></table></div><div class="lj-sum" id="ljSum"></div>
+    <div class="lj-actions"><button type="button" class="small" data-act="add">Tambah lajur</button>
+    <button type="button" class="small" data-act="auto">Bagi otomatis</button>
+    <button type="button" class="small" data-act="fit">Pas-kan lajur sisi terakhir</button>
+    ${!same && ljReg !== "M" ? `<button type="button" class="small ghost" data-act="copyM">Salin dari daerah M</button>` : ""}</div>`;
+  box.innerHTML = html;
+  box.querySelectorAll("[data-reg]").forEach(b => b.addEventListener("click", () => { ljReg = b.dataset.reg; rebuildLajur(); }));
+  box.querySelectorAll("tr[data-i]").forEach(tr => {
+    const i = +tr.dataset.i;
+    tr.querySelectorAll("input,select").forEach(el => el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => {
+      const k = el.dataset.k;
+      if (k === "lebar") {
+        const n = Number(el.value), bad = !isFinite(n) || n < 100 || n > 6000;
+        el.classList.toggle("bad", bad); if (bad) return; list[i].lebar = n;
+      } else list[i][k] = el.value;
+      refreshLajurInfo(); changed();
+    }));
+    tr.querySelector('[data-act="up"]').addEventListener("click", () => { if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; rebuildLajur(); changed(); } });
+    tr.querySelector('[data-act="rm"]').addEventListener("click", () => { if (list.length > 1) { list.splice(i, 1); rebuildLajur(); changed(); } });
+  });
+  box.querySelector('[data-act="add"]').addEventListener("click", () => {
+    const sh = list.findIndex(r => r.jenis === "lajur_atas"), n = list.filter(r => r.jenis === "sisi").length + 1;
+    list.splice(sh >= 0 ? sh : list.length, 0, { nama: `S${n}`, jenis: "sisi", lebar: 1500 }); rebuildLajur(); changed();
+  });
+  box.querySelector('[data-act="auto"]').addEventListener("click", () => {
+    const a = autoLajur(); list.length = 0; a.forEach(x => list.push(x)); rebuildLajur(); changed();
+  });
+  box.querySelector('[data-act="fit"]').addEventListener("click", () => {
+    const K = state.KAPAL, tot = BKI.LJ.keliling(K.B, K.H, geomR()).total;
+    const used = list.reduce((t, r, i) => t + (i === 0 && r.jenis === "lunas" ? r.lebar / 2 : r.lebar), 0) / 1000;
+    let j = -1; list.forEach((r, i) => { if (r.jenis === "sisi") j = i; });
+    if (j < 0) return;
+    const nb = Math.round(list[j].lebar + (tot - used) * 1000);
+    if (nb >= 100) { list[j].lebar = nb; rebuildLajur(); changed(); }
+  });
+  const cm = box.querySelector('[data-act="copyM"]');
+  if (cm) cm.addEventListener("click", () => { const src = clone(ljList("M")); list.length = 0; src.forEach(x => list.push(x)); rebuildLajur(); changed(); });
+  setTimeout(refreshLajurInfo, 0);
+  return box;
+}
+function rebuildLajur() { const old = document.getElementById("ljBox"); if (old) old.replaceWith(buildLajur()); }
+function refreshLajurInfo() {
+  const box = document.getElementById("ljBox"); if (!box) return;
+  const K = state.KAPAL, R = geomR(), list = ljList(ljReg);
+  const pos = BKI.LJ.posisi_lajur(list, K.B, K.H, R, state.SISTEM.sisi === "memanjang", state.JARAK.a_pembujur);
+  pos.forEach((p, i) => { const c = box.querySelector(`[data-z="${i}"]`); if (c) c.textContent = `${p.z0.toFixed(2).replace(".", ",")}–${p.z1.toFixed(2).replace(".", ",")}`; });
+  const tot = BKI.LJ.keliling(K.B, K.H, R).total, used = pos.length ? pos[pos.length - 1].s1 : 0, d = used - tot;
+  const sum = box.querySelector("#ljSum");
+  const ok = Math.abs(d) <= 0.05;
+  sum.className = "lj-sum" + (ok ? "" : " bad");
+  sum.textContent = `Jumlah ${used.toFixed(2).replace(".", ",")} m dari setengah keliling ${tot.toFixed(2).replace(".", ",")} m` +
+    (ok ? " · pas" : ` · ${d < 0 ? "kurang" : "lebih"} ${Math.abs(d * 1000).toFixed(0)} mm`);
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+
+// ---------------------------------------------------------------- compute
+let lap = null, timer = null, tab = "ringkasan";
+function changed() { clearTimeout(timer); timer = setTimeout(() => { run(); save(); }, 350); }
+function sanity(s) {
+  const K = s.KAPAL, e = [];
+  if (K.T >= K.H) e.push("Sarat T harus lebih kecil dari tinggi H.");
+  if (K.B > K.L / 2) e.push("Lebar B tidak masuk akal terhadap panjang L.");
+  if (s.JARAK.hDB && s.JARAK.hDB >= K.H) e.push("Tinggi dasar ganda harus lebih kecil dari H.");
+  if (s.GELADAK.z_geladak_antara && (s.GELADAK.z_geladak_antara <= (s.JARAK.hDB || 0) || s.GELADAK.z_geladak_antara >= K.H))
+    e.push("Tinggi geladak antara harus di antara alas dalam dan geladak utama.");
+  if (K.Tb > K.T || K.Tmin > K.T) e.push("Sarat ballast tidak boleh lebih besar dari sarat T.");
+  return e;
+}
+function run() {
+  const eb = $("#errBox");
+  const errs = sanity(state);
+  if (errs.length) { eb.hidden = false; eb.innerHTML = "<b>Periksa input:</b> " + errs.join(" "); return; }
+  try {
+    lap = BKI.hitung(clone(state));
+    eb.hidden = true;
+  } catch (e) {
+    eb.hidden = false; eb.textContent = "Perhitungan gagal: " + e.message + ". Periksa kembali input yang diubah terakhir.";
+    return;
+  }
+  renderHead(); renderTabs(); renderView();
+}
+
+// ---------------------------------------------------------------- format
+function fmt(v) {
+  if (typeof v !== "number") return v === null || v === undefined ? "" : esc(String(v));
+  const a = Math.abs(v);
+  if (a >= 1000) return Math.round(v).toLocaleString("id-ID");
+  if (a >= 100) return v.toFixed(1).replace(".", ",");
+  if (Number.isInteger(v)) return String(v);
+  return v.toFixed(2).replace(/0$/, "").replace(".", ",");
+}
+function flash(el, t) { el.textContent = t; clearTimeout(el._t); el._t = setTimeout(() => { el.textContent = ""; }, 2200); }
+
+function renderHead() {
+  const K = state.KAPAL, k = BKI.R.faktor_material_k(K.ReH);
+  $("#shipName").textContent = K.nama || "Kapal tanpa nama";
+  const n = lap.lembar.reduce((s, l) => s + l.isi.filter(i => i.jenis === "DATA").length, 0);
+  $("#meta").textContent = `${n} baris hasil · dihitung ulang otomatis saat input berubah`;
+  const sys = s => (s === "melintang" ? "melintang" : "memanjang");
+  const chips = [
+    `L ${fmt(K.L)} m`, `B ${fmt(K.B)} m`, `H ${fmt(K.H)} m`, `T ${fmt(K.T)} m`, `CB ${fmt(K.CB)}`,
+    `k = ${k.toFixed(2).replace(".", ",")}`, `alas ${sys(state.SISTEM.alas)}`, `sisi ${sys(state.SISTEM.sisi)}`, `geladak ${sys(state.SISTEM.geladak)}`,
+    state.JARAK.hDB ? `dasar ganda ${fmt(state.JARAK.hDB)} m` : "alas tunggal",
+  ];
+  let html = chips.map(c => `<span class="chip">${esc(c)}</span>`).join("");
+  if (K.L < 90) html += `<span class="chip warn">L &lt; 90 m: rumus Sec 6 B.1.1 / C.1.1</span>`;
+  $("#chips").innerHTML = html;
+}
+
+const TABS = [["ringkasan", "Ringkasan"], ["1", "Data & koefisien"], ["2", "Beban"], ["3", "Tebal pelat"], ["4", "Modulus & profil"], ["katalog", "Katalog profil"], ["catatan", "Catatan"]];
+function renderTabs() {
+  const t = $("#tabs");
+  t.innerHTML = TABS.map(([id, nm]) => `<button role="tab" type="button" data-t="${id}" aria-selected="${id === tab}">${nm}</button>`).join("");
+  t.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { tab = b.dataset.t; try { localStorage.setItem(STORE_KEY + "-tab", tab); } catch (e) {} renderTabs(); renderView(); }));
+  const showTools = tab !== "catatan";
+  $(".toolbar").hidden = !showTools;
+  $("#q").hidden = tab === "ringkasan" || tab === "katalog";
+}
+
+function sheet(prefix) { return lap.lembar.find(l => l.nama.startsWith(prefix)); }
+function renderView() {
+  const v = $("#view");
+  if (tab === "ringkasan") { v.innerHTML = renderSummary(); bindProfLinks(v); return; }
+  if (tab === "catatan") { v.innerHTML = renderNotes(); return; }
+  if (tab === "katalog") { renderKatalog(v); return; }
+  const sh = sheet(tab), q = $("#q").value.trim().toLowerCase();
+  let rows = "", grp = null, grpShown = false;
+  for (const it of sh.isi) {
+    if (it.jenis === "JUDUL") { grp = it.teks; grpShown = false; if (!q) rows += `<tr class="grp"><td colspan="7">${esc(grp)}</td></tr>`; continue; }
+    if (it.jenis === "CATATAN") { if (!q) rows += `<tr class="note"><td colspan="7">${esc(it.teks)}</td></tr>`; continue; }
+    const [kom, dae, rin, perlu, pakai, sat, prof, ref] = it.data;
+    if (q && !(kom + " " + rin + " " + ref + " " + prof + " " + grp).toLowerCase().includes(q)) continue;
+    if (q && !grpShown) { rows += `<tr class="grp"><td colspan="7">${esc(grp)}</td></tr>`; grpShown = true; }
+    rows += `<tr><td>${esc(kom)}${rin ? `<span class="rin">${esc(rin)}</span>` : ""}</td><td class="zone">${esc(dae)}</td>
+      <td class="num">${fmt(perlu)}</td><td class="num use">${fmt(pakai)}</td><td class="zone">${esc(sat)}</td>
+      <td class="prof">${it.meta ? `<button type="button" class="proflink" data-meta='${esc(JSON.stringify(Object.assign({ judul: kom + (dae ? " (" + dae + ")" : "") }, it.meta)))}'>${esc(prof)}</button>` : esc(prof)}</td><td class="ref">${esc(ref)}</td></tr>`;
+  }
+  if (!rows) rows = `<tr class="note"><td colspan="7">Tidak ada baris yang cocok dengan "${esc(q)}".</td></tr>`;
+  v.innerHTML = `<div class="card tbl-wrap"><table class="res"><thead><tr><th>Komponen / rincian</th><th>Daerah</th><th style="text-align:right">Perlu</th>
+    <th style="text-align:right">Dipakai</th><th>Satuan</th><th>Profil usulan</th><th>Referensi BKI</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  bindProfLinks(v);
+}
+function bindProfLinks(root) {
+  root.querySelectorAll(".proflink").forEach(b => b.addEventListener("click", () => {
+    finder = Object.assign({}, finder, JSON.parse(b.dataset.meta));
+    tab = "katalog"; renderTabs(); renderView(); window.scrollTo({ top: $("section.results").offsetTop - 10 });
+  }));
+}
+
+// ---------------------------------------------------------------- summary
+function findRow(kom, dae) {
+  for (const l of lap.lembar) for (const it of l.isi)
+    if (it.jenis === "DATA" && it.data[0] === kom && (dae === undefined || it.data[1] === dae)) return it;
+  return null;
+}
+function profBtn(it, label) {
+  if (!it || !it.meta) return esc(label);
+  return `<button type="button" class="proflink" data-meta='${esc(JSON.stringify(Object.assign({ judul: it.data[0] + " (" + it.data[1] + ")" }, it.meta)))}'>${esc(label)}</button>`;
+}
+function find(kom, dae) {
+  for (const l of lap.lembar) for (const it of l.isi)
+    if (it.jenis === "DATA" && it.data[0] === kom && (dae === undefined || it.data[1] === dae)) return it.data;
+  return null;
+}
+function findStart(prefix, dae) {
+  for (const l of lap.lembar) for (const it of l.isi)
+    if (it.jenis === "DATA" && it.data[0].startsWith(prefix) && (dae === undefined || it.data[1] === dae)) return it.data;
+  return null;
+}
+function renderSummary() {
+  const S = state.SISTEM, Z = ["A", "M", "F"];
+  const plates = [["Pelat geladak kekuatan", "Geladak kekuatan"]];
+  if (state.JARAK.hDB) plates.push(["Pelat alas dalam", "Alas dalam"]);
+  if (state.GELADAK.z_geladak_antara) plates.push(["Pelat geladak antara", "Geladak antara"]);
+  const cell = (d, unit) => {
+    if (!d) return "<td>–</td>";
+    const use = d[4] !== "" ? d[4] : d[3];
+    return `<td>${fmt(use)}${d[6] ? `<span class="sub">${esc(d[6].replace(/ \(W=\d+\)/, ""))}</span>` : ""}</td>`;
+  };
+  let tp = "";
+  for (const [kom, lab] of plates) tp += `<tr><td>${lab}</td>${Z.map(z => cell(find(kom, z))).join("")}</tr>`;
+  const singles = [];
+  const cg = find("Penumpu tengah - tebal"); if (cg) singles.push(["Penumpu tengah", cg[4], "mm"]);
+  const sg = find("Penumpu samping - tebal"); if (sg) singles.push(["Penumpu samping", sg[4], "mm"]);
+  const wr = find("Wrang pelat - tebal"); if (wr) singles.push(["Wrang pelat", wr[4], "mm"]);
+  const kb = find("Pelat kubu-kubu (bulwark)"); if (kb) singles.push(["Kubu-kubu", kb[4], "mm"]);
+  let ts = singles.map(([n, v, u]) => `<tr><td>${n}</td><td colspan="3">${fmt(v)} ${u}</td></tr>`).join("");
+
+  const mods = [];
+  if (S.sisi === "melintang") { mods.push(["Gading utama - W", "Gading utama"]); mods.push(["Gading besar - W", "Gading besar"]); }
+  else { mods.push(["Gading besar sisi - W", "Gading besar sisi"]); }
+  mods.push(S.geladak === "melintang" ? ["Balok geladak - W", "Balok geladak"] : ["Pembujur geladak - W", "Pembujur geladak"]);
+  mods.push(["Penumpu geladak - W", "Penumpu geladak"]);
+  if (state.JARAK.hDB) {
+    if (S.alas === "melintang") { mods.push(["Gading alas (wrang terbuka) - W", "Gading alas"]); mods.push(["Gading balik (wrang terbuka) - W", "Gading balik"]); }
+    else { mods.push(["Pembujur alas - W", "Pembujur alas"]); mods.push(["Pembujur alas dalam - W", "Pembujur alas dalam"]); }
+  }
+  let tm = "";
+  for (const [kom, lab] of mods) {
+    tm += `<tr><td>${lab}<span class="sub" style="font-family:var(--f-mono);font-size:11px;color:var(--muted)">W perlu, cm³</span></td>` +
+      Z.map(z => { const it = findRow(kom, z); const d = it && it.data; return d ? `<td>${fmt(d[3])}<span class="sub">${profBtn(it, (d[6] || "").replace(/ \(W=\d+\)/, ""))}</span></td>` : "<td>–</td>"; }).join("") + "</tr>";
+  }
+  if (S.sisi === "memanjang") {
+    tm += `<tr><td>Pembujur sisi terbawah<span class="sub" style="font-family:var(--f-mono);font-size:11px;color:var(--muted)">W perlu, cm³</span></td>` +
+      Z.map(z => { const d = findStart("Pembujur sisi z=", z); return d ? `<td>${fmt(d[3])}<span class="sub">${esc((d[6] || "").replace(/ \(W=\d+\)/, ""))}</span></td>` : "<td>–</td>"; }).join("") + "</tr>";
+  }
+  const sk = find("Penegar sekat ruang muat/kamar mesin - W");
+  const sk1 = find("Penegar sekat tubrukan - W");
+  const pil = findStart("Pilar ruang muat");
+
+  return `<div class="sum-grid">
+      <div class="card tbl-wrap"><h3>Geladak &amp; konstruksi alas (mm)</h3>
+        <table class="mx"><thead><tr><th>Komponen</th><th>A · buritan</th><th>M · tengah</th><th>F · haluan</th></tr></thead><tbody>${tp}${ts}</tbody></table></div>
+    <div class="card"><h3>Penampang tengah kapal (daerah M)</h3>
+      <div class="section-svg">${midshipSVG()}</div>
+      <div class="legend">Sketsa skematis setengah lebar. Garis merah pendek = kampuh antar lajur; label merah = nama lajur dan tebal dipakai [mm] di daerah tengah kapal.</div>
+    </div>
+      ${lajurCard()}
+      <div class="card tbl-wrap span2"><h3>Modulus penampang &amp; profil usulan</h3>
+        <table class="mx"><thead><tr><th>Komponen</th><th>A · buritan</th><th>M · tengah</th><th>F · haluan</th></tr></thead><tbody>${tm}
+        ${sk1 ? `<tr><td>Penegar sekat tubrukan</td><td colspan="3">${fmt(sk1[3])} cm³<span class="sub">${esc(sk1[6].replace(/ \(W=\d+\)/, ""))}</span></td></tr>` : ""}
+        ${sk ? `<tr><td>Penegar sekat ruang muat</td><td colspan="3">${fmt(sk[3])} cm³<span class="sub">${esc(sk[6].replace(/ \(W=\d+\)/, ""))}</span></td></tr>` : ""}
+        ${pil ? `<tr><td>Pilar ruang muat</td><td colspan="3">${fmt(pil[3])} cm² perlu<span class="sub">${esc(pil[6])}</span></td></tr>` : ""}
+        </tbody></table></div>
+  </div>`;
+}
+
+function lajurCard() {
+  const H = lap.lajur && lap.lajur.hasil; if (!H) return "";
+  const Z = ["A", "M", "F"], n = Math.max(...Z.map(z => (H[z] || []).length));
+  const same = state.LAJUR.sama_semua_daerah !== false;
+  let rows = "";
+  for (let i = n - 1; i >= 0; i--) {
+    const m = (H.M || [])[i];
+    const lab = same && m ? `${esc(m.nama)} · ${BKI.LJ.NAMA_JENIS[m.jenis]}<span class="sub" style="color:var(--muted)">b = ${fmt(m.lebar)} mm · z ${fmt(m.z0)}–${fmt(m.z1)} m</span>` : `Lajur ${i + 1}`;
+    rows += `<tr><td>${lab}</td>` + Z.map(z => {
+      const h = (H[z] || [])[i];
+      if (!h) return "<td>–</td>";
+      return `<td>${fmt(h.t_pakai)}${same ? "" : `<span class="sub">${esc(h.nama)} · ${fmt(h.lebar)} mm</span>`}</td>`;
+    }).join("") + "</tr>";
+  }
+  return `<div class="card tbl-wrap span2"><h3>Lajur pelat kulit – tebal dipakai (mm), dari geladak ke lunas</h3>
+    <table class="mx"><thead><tr><th>Lajur</th><th>A · buritan</th><th>M · tengah</th><th>F · haluan</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function midshipSVG() {
+  const K = state.KAPAL, hDB = state.JARAK.hDB || 0, S = state.SISTEM;
+  const get = (k, z = "M") => { const d = find(k, z); return d ? (d[4] !== "" ? d[4] : d[3]) : null; };
+  const prof = (k, z = "M") => { const d = find(k, z); return d && d[6] ? d[6].replace(/ \(W=\d+\)/, "") : ""; };
+  const W = 560, Hh = 440, padL = 70, padR = 160, padT = 44, padB = 52;
+  const sx = (W - padL - padR) / (K.B / 2), sy = (Hh - padT - padB) / K.H, s = Math.min(sx, sy);
+  const X = x => padL + x * s, Y = z => Hh - padB - z * s;
+  const half = K.B / 2, R = Math.min(BKI.LJ.jari_jari_bilga(K.B, state.LAJUR.jari_jari_bilga), K.H * 0.9, half);
+  const txt = (x, y, t, anchor = "start", cls = "") => `<text x="${x}" y="${y}" text-anchor="${anchor}" class="${cls}">${esc(t)}</text>`;
+  const lead = (x1, y1, x2, y2) => `<path d="M${x1} ${y1} L${x2} ${y2}" class="ld"/>`;
+  let g = "";
+  // shell
+  g += `<path d="M${X(0)} ${Y(0)} L${X(half - R)} ${Y(0)} Q${X(half)} ${Y(0)} ${X(half)} ${Y(R)} L${X(half)} ${Y(K.H)} L${X(0)} ${Y(K.H)}" class="shell"/>`;
+  // centreline
+  g += `<path d="M${X(0)} ${Y(-0.4)} L${X(0)} ${Y(K.H + 0.6)}" class="cl"/>` + txt(X(0), Y(K.H + 0.75), "CL", "middle", "lab");
+  // waterline
+  g += `<path d="M${X(0)} ${Y(K.T)} L${X(half) + 18} ${Y(K.T)}" class="wl"/>` + txt(X(half) + 22, Y(K.T) + 4, `T ${fmt(K.T)}`, "start", "wlt");
+  // sheer strake band
+  const bss = Math.min((800 + 5 * K.L) / 1000, 1.8);
+  if (hDB) {
+    g += `<path d="M${X(0)} ${Y(hDB)} L${X(half - R * 0.3)} ${Y(hDB)}" class="mem"/>`;
+    g += `<path d="M${X(0)} ${Y(0)} L${X(0)} ${Y(hDB)}" class="girder"/>`;
+    const n = BKI.R.jumlah_penumpu_samping(K.B);
+    for (let i = 1; i <= n; i++) { const x = half / (n + 1) * i; g += `<path d="M${X(x)} ${Y(0)} L${X(x)} ${Y(hDB)}" class="mem thin"/>`; }
+  }
+  // frame + beam (stiffeners)
+  const fz0 = hDB + 0.15, fz1 = K.H - 0.25;
+  g += `<path d="M${X(half) - 7} ${Y(fz0)} L${X(half) - 7} ${Y(fz1)}" class="stf"/>`;
+  g += `<path d="M${X(half) - 7} ${Y(K.H) + 7} L${X(0) + 6} ${Y(K.H) + 7}" class="stf"/>`;
+  if (state.GELADAK.z_geladak_antara) g += `<path d="M${X(0)} ${Y(state.GELADAK.z_geladak_antara)} L${X(half)} ${Y(state.GELADAK.z_geladak_antara)}" class="mem"/>`;
+  // labels
+  const lx = X(half) + 20;
+  const tD = get("Pelat geladak kekuatan"), tSh = get("Lajur atas - tebal"), tSa = get("Pelat sisi atas garis air"), tSb = get("Pelat sisi bawah garis air");
+  const tB = get("Pelat alas"), tK = get("Lunas pelat datar - tebal (0,7L tengah)"), tIB = get("Pelat alas dalam"), tCG = get("Penumpu tengah - tebal");
+  const kGad = S.sisi === "melintang" ? "Gading utama - W" : "Gading besar sisi - W";
+  // lajur pelat kulit (daerah M): batas lajur + label tebal
+  const LJH = lap.lajur && lap.lajur.hasil.M ? lap.lajur.hasil.M : [];
+  const Rb = lap.lajur ? lap.lajur.R : R;
+  const P = sv => { const [z, y] = BKI.LJ.titik(sv, K.B, K.H, Rb); return [X(y), Y(z)]; };
+  const kel = BKI.LJ.keliling(K.B, K.H, Rb);
+  const right = [];
+  LJH.forEach((h, i) => {
+    const [x1, y1] = P(Math.min(h.s1, kel.total));
+    // garis kampuh (seam) tegak lurus kulit
+    let nx = 0, ny = 1;
+    if (h.s1 > kel.datar && h.s1 < kel.datar + kel.busur) { const th = (h.s1 - kel.datar) / Rb; nx = Math.sin(th); ny = Math.cos(th); }
+    else if (h.s1 >= kel.datar + kel.busur) { nx = 1; ny = 0; }
+    if (i < LJH.length - 1) g += `<path d="M${x1 - nx * 6} ${y1 - ny * 6} L${x1 + nx * 7} ${y1 + ny * 7}" class="seam"/>`;
+    const sm = (h.s0 + Math.min(h.s1, kel.total)) / 2, [xm, ym] = P(sm);
+    const lbl = `${h.nama} ${fmt(h.t_pakai)}`;
+    if (h.jenis === "sisi" || h.jenis === "lajur_atas" || (h.jenis === "bilga" && h.z1 > Rb * 1.05)) right.push({ px: xm, py: ym, t1: lbl, k: h.jenis });
+    else if (h.jenis === "bilga") { const th = Math.min((sm - kel.datar) / Rb, Math.PI / 2); g += `<path d="M${xm} ${ym} L${xm + 22} ${ym + 22}" class="ld"/>` + txt(xm + 24, ym + 34, lbl, "start", "lab strk"); }
+    else g += txt(Math.max(xm, X(0) + 14), Y(0) + (i % 2 ? 34 : 20), lbl, "middle", "lab strk");
+  });
+  right.sort((p, q) => p.py - q.py);
+  let yPrev = -1e9;
+  for (const r of right) {
+    const y = Math.max(r.py, yPrev + 17);
+    g += `<path d="M${r.px} ${r.py} L${lx - 4} ${y - 4}" class="ld"/>` + txt(lx, y, r.t1, "start", "lab strk");
+    yPrev = y;
+  }
+  // gading (penegar sisi)
+  const gy = Y((fz0 + fz1) / 2);
+  g += lead(X(half) - 7, gy, X(half * 0.62), gy) + txt(X(half * 0.6), gy - 4, S.sisi === "melintang" ? "Gading utama" : "Gading besar sisi", "end", "lab") +
+    txt(X(half * 0.6), gy + 9, prof(kGad), "end", "sub");
+  g += lead(X(half * 0.55), Y(K.H), X(half * 0.55), Y(K.H) - 18) + txt(X(half * 0.55), Y(K.H) - 22, `Geladak ${fmt(tD)}`, "middle", "lab");
+  const kBal = S.geladak === "melintang" ? "Balok geladak - W" : "Pembujur geladak - W";
+  g += lead(X(half * 0.25), Y(K.H) + 7, X(half * 0.25), Y(K.H) + 30) + txt(X(half * 0.25) + 4, Y(K.H) + 42, (S.geladak === "melintang" ? "Balok " : "Pembujur ") + prof(kBal), "start", "sub");
+  if (hDB) {
+    g += lead(X(half * 0.4), Y(hDB), X(half * 0.4), Y(hDB) - 18) + txt(X(half * 0.4), Y(hDB) - 22, `Alas dalam ${fmt(tIB)}`, "middle", "lab");
+    g += lead(X(0), Y(hDB * 0.5), X(0) - 14, Y(hDB * 0.5)) + txt(X(0) - 18, Y(hDB * 0.5) - 2, "Penumpu", "end", "sub") + txt(X(0) - 18, Y(hDB * 0.5) + 11, `tengah ${fmt(tCG)}`, "end", "sub");
+  }
+  g += txt(X(half / 2), Hh - 6, `B/2 = ${fmt(half)} m`, "middle", "dim");
+  g += txt(16, Y(K.H / 2), `H = ${fmt(K.H)} m`, "middle", "dim").replace("<text", `<text transform="rotate(-90 16 ${Y(K.H / 2)})"`);
+  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Sketsa penampang tengah kapal dengan tebal pelat">
+    <style>
+      .shell{fill:none;stroke:var(--navy);stroke-width:3.2;stroke-linejoin:round}
+      .sheer{stroke:var(--accent);stroke-width:5;fill:none}
+      .mem{stroke:var(--navy);stroke-width:2;fill:none}.mem.thin{stroke-width:1.3;stroke-dasharray:4 3}
+      .girder{stroke:var(--navy);stroke-width:2.6}
+      .stf{stroke:var(--accent);stroke-width:2;fill:none}
+      .cl{stroke:var(--muted);stroke-width:1;stroke-dasharray:8 3 2 3}
+      .wl{stroke:var(--ok);stroke-width:1.2;stroke-dasharray:6 4}
+      .ld{stroke:var(--muted);stroke-width:.8;fill:none}
+      .seam{stroke:var(--accent);stroke-width:1.6} .strk{fill:var(--accent)}
+      text{font-family:var(--f-mono);fill:var(--ink)} .lab{font-size:11.5px;font-weight:600}
+      .sub{font-size:10.5px;fill:var(--navy)} .dim{font-size:11px;fill:var(--muted)} .wlt{font-size:10.5px;fill:var(--ok)}
+    </style>${g}</svg>`;
+}
+
+// ---------------------------------------------------------------- katalog profil
+let finder = { W: 300, Aq: 0, tp: 10, be: 600, k: 1, penumpu: false, Iq: 0, hmin: 0, twmin: 0, judul: "", pilihan: "", jenis: "semua", sortir: "massa" };
+function renderKatalog(v) {
+  const k = BKI.R.faktor_material_k(state.KAPAL.ReH);
+  if (!finder.judul) finder.k = k;
+  const f = finder;
+  const kand = BKI.P.daftar_kandidat(f.W, f.tp, f.be, f.Aq, f.k, f.penumpu, f.Iq, f.hmin, f.twmin, f.penumpu ? ["T"] : ["L", "T"]);
+  const bangun = kand.length ? null : BKI.P.rancang_profil_T(f.W, f.Aq, f.tp, f.be, f.penumpu ? f.hmin : 150, f.twmin, f.Iq, f.penumpu, f.k);
+  let rows = "";
+  kand.slice(0, 15).forEach((r, i) => {
+    rows += `<tr class="${i === 0 ? "best" : ""}"><td>${esc(r.nama)}</td><td class="zone">${r.jenis}</td><td class="num">${fmt(r.massa)}</td>
+      <td class="num">${fmt(r.W_ada)}</td><td class="num">${((r.W_ada / f.W - 1) * 100).toFixed(0)}%</td><td class="num">${fmt(r.I_ada)}</td><td class="ref">${esc(r.asal)}</td></tr>`;
+  });
+  if (!kand.length) rows = `<tr class="note"><td colspan="7">Tidak ada profil L/T katalog yang cukup untuk W = ${fmt(f.W)} cm³ dengan syarat ini.${bangun ? ` Usulan: <b>${esc(bangun.nama)}</b> (W = ${fmt(bangun.W_ada)} cm³, ±${fmt(bangun.massa)} kg/m), dilas dari pelat.` : ""}</td></tr>`;
+
+  // tabel katalog lengkap
+  const show = f.jenis;
+  const all = [];
+  if (show !== "T") for (const it of BKI.P.KATALOG_L) all.push(["L", it]);
+  if (show !== "L") for (const it of BKI.P.KATALOG_T) all.push(["T", it]);
+  const cat = all.map(([j, it]) => {
+    const s = BKI.P.sifat_katalog(it, f.tp, f.be, f.k);
+    const ok = BKI.P.lolos_kelangsingan(it, f.k, false);
+    return { j, it, s, ok };
+  });
+  if (f.sortir === "W") cat.sort((a, b) => a.s.W_cm3 - b.s.W_cm3); else cat.sort((a, b) => a.it.massa - b.it.massa);
+  const dim = (j, it) => j === "L" ? `${it.h} × ${it.b} × ${it.t}${it.tf !== it.t ? "/" + it.tf : ""}` : `${it.d} × ${it.b} × ${it.tw} × ${it.tf}`;
+  const crow = cat.map(({ j, it, s, ok }) => `<tr class="${it.nama === f.pilihan ? "best" : ""}"><td>${esc(it.nama)}</td><td class="zone">${j}</td><td class="num">${dim(j, it)}</td>
+    <td class="num">${it.A !== undefined ? fmt(it.A) : "–"}</td><td class="num">${fmt(it.massa)}</td><td class="num">${fmt(s.W_cm3)}</td><td class="num">${fmt(s.I_cm4)}</td>
+    <td>${ok ? '<span class="badge">ok</span>' : '<span class="badge no">badan langsing</span>'}${s.bf_efektif < it.b - 0.01 ? ' <span class="badge no">flens efektif ' + fmt(s.bf_efektif) + '</span>' : ""}</td>
+    <td class="ref">${esc(it.asal || it.seri)}</td></tr>`).join("");
+
+  v.innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">
+  <div class="card"><h3>Cari profil dari modulus perlu</h3>
+    ${f.judul ? `<div class="ctx">Untuk: <b>${esc(f.judul)}</b> · pelat ikut ${fmt(f.tp)} mm × ${Math.round(f.be)} mm${f.penumpu ? " · penumpu (hanya T, kelangsingan badan Cw = 100)" : ""}${f.Iq ? " · I perlu " + fmt(f.Iq) + " cm⁴" : ""}${f.hmin ? " · tinggi min " + fmt(f.hmin) + " mm" : ""}</div>` : `<div class="ctx">Isi modulus perlu dari hasil perhitungan, atau klik nama profil usulan di tab Modulus &amp; profil.</div>`}
+    <div class="fnd">
+      <div class="field"><label for="fW"><span>W perlu</span><span class="u">cm³</span></label><input id="fW" type="number" step="any" value="${+f.W.toFixed(1)}"></div>
+      <div class="field"><label for="fAq"><span>Luas geser perlu</span><span class="u">cm²</span></label><input id="fAq" type="number" step="any" value="${+(+f.Aq).toFixed(2)}"></div>
+      <div class="field"><label for="fTp"><span>Tebal pelat ikut</span><span class="u">mm</span></label><input id="fTp" type="number" step="0.5" value="${f.tp}"></div>
+      <div class="field"><label for="fBe"><span>Lebar pelat ikut</span><span class="u">mm</span></label><input id="fBe" type="number" step="10" value="${Math.round(f.be)}"></div>
+      <div class="field"><label for="fPen"><span>Fungsi</span><span class="u"></span></label><select id="fPen"><option value="0" ${!f.penumpu ? "selected" : ""}>Penegar / gading (L dan T)</option><option value="1" ${f.penumpu ? "selected" : ""}>Penumpu (hanya T)</option></select></div>
+    </div>
+    <div class="tbl-wrap"><table class="res"><thead><tr><th>Profil</th><th>Jenis</th><th style="text-align:right">Berat kg/m</th><th style="text-align:right">W + pelat cm³</th><th style="text-align:right">Lebih</th><th style="text-align:right">I + pelat cm⁴</th><th>Seri / asal</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="ctx">${kand.length} profil memenuhi; ditampilkan maks. 15 teringan. Rekomendasi = profil teringan yang memenuhi W, luas geser badan dan kelangsingan badan (Sec 3 F.2.3).</div>
+  </div>
+  <div class="card"><h3>Katalog profil L &amp; T</h3>
+    <div class="fnd">
+      <div class="field"><label for="fJ"><span>Tampilkan</span><span class="u"></span></label><select id="fJ"><option value="semua" ${show === "semua" ? "selected" : ""}>L dan T</option><option value="L" ${show === "L" ? "selected" : ""}>Siku L (JIS G3192)</option><option value="T" ${show === "T" ? "selected" : ""}>T (CT dari H JIS)</option></select></div>
+      <div class="field"><label for="fS"><span>Urutkan</span><span class="u"></span></label><select id="fS"><option value="massa" ${f.sortir !== "W" ? "selected" : ""}>Berat</option><option value="W" ${f.sortir === "W" ? "selected" : ""}>Modulus</option></select></div>
+    </div>
+    <div class="ctx">W dan I dihitung bersama pelat ikut ${fmt(f.tp)} × ${Math.round(f.be)} mm (ubah di kotak pencari di atas). Siku: h = kaki yang dilas ke pelat. T: tinggi × lebar flens × tebal badan × tebal flens.</div>
+    <div class="tbl-wrap"><table class="res"><thead><tr><th>Profil</th><th>Jenis</th><th style="text-align:right">Ukuran mm</th><th style="text-align:right">A cm²</th><th style="text-align:right">Berat kg/m</th><th style="text-align:right">W + pelat cm³</th><th style="text-align:right">I + pelat cm⁴</th><th>Cek Sec 3 F.2.3</th><th>Seri / asal</th></tr></thead><tbody>${crow}</tbody></table></div>
+    <div class="src"><b style="color:var(--ink)">Sumber katalog</b>
+      <span>Siku L, JIS G3192: <a href="https://welsteels.com/products/steel-profiles/angle-steel/jis-angle-steel/jis-g3192-angle-steel/" target="_blank" rel="noopener">Welsteels – JIS G3192 Angle Steel</a> · <a href="https://www.jfe-steel.co.jp/en/products/shapes/catalog/d1e-002.pdf" target="_blank" rel="noopener">JFE Steel – Steel Sections for Shipbuilding</a></span>
+      <span>T, belah dua H-beam JIS G3192: <a href="https://www.tunghosteel.com/Files/papp/410/H%E5%9E%8B%E9%8B%BC%E4%B8%AD%E5%9C%8B%E5%9C%8B%E5%AE%B6%E6%A8%99%E6%BA%96(CNS)&amp;%E6%97%A5%E6%9C%AC%E5%B7%A5%E6%A5%AD%E8%A6%8F%E6%A0%BC(JIS).pdf" target="_blank" rel="noopener">Tung Ho Steel – H型鋼 CNS &amp; JIS</a></span>
+      <span>Radius akar profil diabaikan saat menghitung W (hasil sedikit konservatif). Cek ketersediaan ukuran di pemasok sebelum memesan.</span>
+    </div>
+  </div></div>`;
+  const upd = (id, key, conv) => { const el = document.getElementById(id); el.addEventListener("change", () => { const val = conv(el.value); if (val === null) return; finder[key] = val; if (["W", "Aq", "tp", "be", "penumpu"].includes(key)) { finder.pilihan = ""; } renderKatalog(v); }); };
+  const num = x => { const n = Number(x); return isFinite(n) && n >= 0 ? n : null; };
+  upd("fW", "W", num); upd("fAq", "Aq", num); upd("fTp", "tp", x => { const n = num(x); return n && n > 0 ? n : null; });
+  upd("fBe", "be", x => { const n = num(x); return n && n > 0 ? n : null; }); upd("fPen", "penumpu", x => x === "1");
+  upd("fJ", "jenis", x => x); upd("fS", "sortir", x => x);
+}
+function renderNotes() {
+  const notes = [
+    "Rumus mengacu BKI Rules for Hull (Pt.1 Vol.II) Edisi Januari 2026; referensi paragraf ada di setiap baris hasil.",
+    "Daerah A / M / F dihitung pada x/L = 0,10 / 0,50 / 0,90. Di antara daerah, ukuran ditransisikan bertahap.",
+    "Pusat beban pelat sisi = 0,5a di atas tumpuan bawah lajur (Sec 4, A.2.1); lajur bawah mulai alas dalam, lajur atas mulai garis air. Pusat beban gading/penegar = tengah bentang.",
+    "Bila beban gelombang melintang dicentang, pB1 dan ps1 diambil di y = B/2 (konservatif) dan dipakai sesuai Sec 4 B.2/B.3 serta Sec 6 C.1.2.",
+    "Tegangan memanjang σLB memakai pendekatan pertama Sec 6 B.1.2. Bila kekuatan memanjang (Sec 5) sudah dihitung, hasil pelat alas/sisi/pembujur perlu dicek ulang.",
+    "Tekanan tangki p1 dihitung untuk kondisi tegak; tinggi tekan kondisi oleng (hp, Sec 4 D.1.1) belum dihitung.",
+    "Tebal “Dipakai” = tebal perlu dibulatkan ke atas.",
+    "Profil usulan dipilih dari katalog siku L (JIS G3192) dan T (belah dua H-beam JIS G3192): profil teringan yang memenuhi W dan luas geser bersama pelat ikut (lebar = jarak gading untuk penegar, em Tabel 3.1 untuk penumpu) serta kelangsingan badan Sec 3 F.2.3/F.2.4; flens yang terlalu lebar dihitung dengan lebar efektif 12·tf·√k. Penumpu hanya memakai profil T. Bila tidak ada profil katalog yang cukup, diusulkan T bangun dari pelat. Klik nama profil untuk melihat alternatifnya.",
+    "Belum dicakup: cek tekuk (Sec 3 F), kekuatan memanjang lengkap (Sec 5), lelah (Sec 20), palka (Sec 17), pondasi mesin (Sec 8 C), kemudi (Sec 14), es (Sec 15), kapal curah/tanker (Sec 23–24).",
+    "Tombol “Salin tabel ke Excel” menyalin tab yang sedang dibuka; tempel (Ctrl+V) langsung di Excel atau Google Sheets.",
+    "Hasil ini alat bantu; gambar konstruksi tetap harus diperiksa dan disetujui BKI.",
+  ];
+  const extra = [];
+  for (const l of lap.lembar) for (const it of l.isi) if (it.jenis === "CATATAN") extra.push(it.teks);
+  return `<div class="card"><h3>Asumsi &amp; batasan</h3><ol class="notes-list">${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ol></div>
+    ${extra.length ? `<div class="card" style="margin-top:14px"><h3>Catatan dari perhitungan kapal ini</h3><ol class="notes-list">${extra.map(n => `<li>${esc(n)}</li>`).join("")}</ol></div>` : ""}`;
+}
+
+// ---------------------------------------------------------------- copy
+function tsvFor(t) {
+  const num = v => (typeof v === "number" ? String(Math.round(v * 1000) / 1000).replace(".", ",") : String(v ?? ""));
+  const lines = [];
+  if (t === "katalog") {
+    const f = finder, out = ["KATALOG PROFIL L & T (W, I dengan pelat ikut " + f.tp + " x " + Math.round(f.be) + " mm)", ["Profil", "Jenis", "Berat kg/m", "W cm3", "I cm4", "Seri/asal"].join("\t")];
+    for (const it of BKI.P.KATALOG_L.concat(BKI.P.KATALOG_T)) { const s = BKI.P.sifat_katalog(it, f.tp, f.be, f.k); out.push([it.nama, it.d !== undefined ? "T" : "L", num(it.massa), num(s.W_cm3), num(s.I_cm4), it.asal || it.seri].join("\t")); }
+    return out.join("\n");
+  }
+  const sheets = t === "ringkasan" ? lap.lembar.filter(l => /^[34]/.test(l.nama)) : [sheet(t)];
+  for (const sh of sheets) {
+    lines.push(sh.nama.toUpperCase());
+    lines.push(["Komponen", "Daerah", "Rincian", "Nilai perlu", "Dipakai", "Satuan", "Profil usulan", "Referensi BKI"].join("\t"));
+    for (const it of sh.isi) {
+      if (it.jenis === "DATA") lines.push(it.data.map(num).join("\t"));
+      else lines.push(it.teks);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+function copyText(text, msgEl, fallbackEl) {
+  const ok = () => flash(msgEl, "Tersalin – tempel di Excel dengan Ctrl+V");
+  const fb = () => {
+    const ta = fallbackEl || document.createElement("textarea");
+    if (!fallbackEl) { ta.value = text; ta.style.cssText = "position:fixed;left:-9999px"; document.body.appendChild(ta); }
+    ta.focus(); ta.select();
+    let done = false; try { done = document.execCommand("copy"); } catch (e) {}
+    if (!fallbackEl) ta.remove();
+    flash(msgEl, done ? "Tersalin" : "Teks sudah dipilih – tekan Ctrl+C untuk menyalin");
+  };
+  try { navigator.clipboard.writeText(text).then(ok, fb); } catch (e) { fb(); }
+}
+$("#btnCopy").addEventListener("click", () => { if (lap) copyText(tsvFor(tab), $("#toast")); });
+$("#q").addEventListener("input", () => renderView());
+$("#btnJump").addEventListener("click", () => document.querySelector("section.results").scrollIntoView({ behavior: "smooth" }));
+
+// ---------------------------------------------------------------- share dialog
+const dlg = $("#dlg");
+$("#btnShare").addEventListener("click", () => { $("#dlgText").value = JSON.stringify(state, null, 2); $("#dlgMsg").textContent = ""; dlg.showModal(); });
+$("#dlgClose").addEventListener("click", () => dlg.close());
+$("#dlgCopy").addEventListener("click", () => copyText($("#dlgText").value, $("#dlgMsg"), $("#dlgText")));
+$("#dlgLoad").addEventListener("click", () => {
+  try {
+    const o = JSON.parse($("#dlgText").value);
+    if (!o.KAPAL || typeof o.KAPAL.L !== "number") throw new Error("data KAPAL.L tidak ditemukan");
+    state = merge(clone(DEFAULT), o);
+    buildForm(); run(); save(); dlg.close();
+  } catch (e) { $("#dlgMsg").textContent = "Teks tidak bisa dibaca (" + e.message + "). Pastikan menyalin seluruh teks, termasuk kurung kurawal awal dan akhir."; }
+});
+$("#btnContoh").addEventListener("click", () => { state = clone(DEFAULT); buildForm(); run(); save(); });
+
+// ---------------------------------------------------------------- boot
+try { const t = localStorage.getItem(STORE_KEY + "-tab"); if (t && TABS.some(x => x[0] === t)) tab = t; } catch (e) {}
+buildForm();
+run();
+})();
+</script>
+</body>
+</html>
