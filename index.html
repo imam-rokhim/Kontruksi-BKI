@@ -323,6 +323,7 @@ table.res tr.note td { color: var(--muted); font-size: 12px; font-style: italic;
 /* summary */
 .sum-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .sum-grid .span2 { grid-column: 1 / -1; }
+.sum-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 @media (max-width: 1180px) { .sum-grid { grid-template-columns: minmax(0, 1fr); } }
 .card h3 { font-family: var(--f-display); font-stretch: 80%; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--navy); margin: 0; padding: 12px 14px 8px; }
 table.mx { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1067,6 +1068,29 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
     out.push({ nama: "SH", jenis: "lajur_atas", lebar: Math.round(bs * 1000) });
     return out;
   };
+  // ---- lajur pelat geladak kekuatan (dari sisi ke CL)
+  LJ.NAMA_JENIS_GELADAK = { tepi: "Tepi geladak", samping_palka: "Samping palka", antara_palka: "Antara palka" };
+  LJ.rencana_geladak = function (L, B, lebar_palka, lm = 1.8, y_tepi = null) {
+    y_tepi = y_tepi === null ? B / 2 : y_tepi;
+    const bt = min(ba((800 + 5 * L) / 1000), 1.8), yh = (lebar_palka || 0) / 2;
+    const out = [{ nama: "DS", jenis: "tepi", lebar: Math.round(bt * 1000) }];
+    const sisa = y_tepi - bt - yh, n = sisa > 0.2 ? Math.max(1, Math.ceil(sisa / lm - 1e-9)) : 0;
+    for (let i = 0; i < n; i++) { const b = i < n - 1 ? bb(sisa / n) : sisa - bb(sisa / n) * (n - 1); out.push({ nama: `D${i + 1}`, jenis: "samping_palka", lebar: Math.round(b * 1000) }); }
+    if (sisa > 0 && sisa <= 0.2) out[0].lebar = Math.round((bt + sisa) * 1000);
+    if (yh > 0) out.push({ nama: "DC", jenis: "antara_palka", lebar: Math.round(lebar_palka * 1000) });
+    return out;
+  };
+  LJ.sesuaikan_geladak = function (daftar, y_tepi) {
+    let tetap = 0, ubah = 0;
+    daftar.forEach(lj => { const b = lj.lebar / 1000; if (lj.jenis === "tepi") tetap += b; else if (lj.jenis === "antara_palka") tetap += b / 2; else ubah += b; });
+    if (ubah <= 0) return daftar.map(x => Object.assign({}, x));
+    const f = max((y_tepi - tetap) / ubah, 0.05);
+    return daftar.map(lj => { const x = Object.assign({}, lj); if (lj.jenis === "samping_palka") x.lebar = Math.round(lj.lebar * f); return x; });
+  };
+  LJ.posisi_lajur_geladak = function (daftar, y_tepi) {
+    let y = y_tepi;
+    return daftar.map(lj => { const b = lj.lebar / 1000 / (lj.jenis === "antara_palka" ? 2 : 1); const r = Object.assign({}, lj, { y1: y, y0: y - b }); y -= b; return r; });
+  };
   LJ.posisi_lajur = function (daftar, B, H, R, memanjang = false, ap = 0.65, G = null) {
     if (!G) G = LJ.geometri(B, B - 2 * R, R, H);
     const res = [], tot = G.total;
@@ -1495,6 +1519,35 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
       }
     }
     lap.lajur = { R: R_b, keliling: GEO.M, geom: GEO, hasil: LAJUR_HASIL };
+    // ---------------- rencana lajur pelat geladak kekuatan (dari sisi ke CL)
+    {
+      const LG = inp.LAJUR_GELADAK || {}, lbp_ = G.lebar_palka || 0;
+      const daftar_dek = (LG.daftar && LG.daftar.length) ? LG.daftar : LJ.rencana_geladak(L, B, lbp_, 1.8, GEO.M.yd);
+      lap.judul("Lajur pelat geladak kekuatan (dari sisi kapal ke CL)");
+      const LAJUR_DEK = {};
+      for (const [kd] of DAERAH) {
+        const y_t = GEO[kd].yd, lst = kd === "M" ? daftar_dek : LJ.sesuaikan_geladak(daftar_dek, y_t);
+        const pos = LJ.posisi_lajur_geladak(lst, y_t);
+        for (const h of pos) {
+          let t, ref, dasar;
+          if (h.jenis === "tepi") { t = TP["stringer_dek" + kd]; ref = "Sec 7, A.5.3"; dasar = "lajur tepi geladak: maks(t geladak, t sisi)"; }
+          else if (h.jenis === "antara_palka") { t = kd === "M" ? TP.geladak_antara_palka : TP["geladak" + kd]; ref = "Sec 7, A.7.1"; dasar = "di dalam garis palka: tE"; }
+          else { t = TP["geladak" + kd]; ref = kd === "M" ? "Sec 7, A.6" : "Sec 7, A.7.1"; dasar = "di luar garis palka" + (kd === "M" ? "; tmin 0,4L tengah" : "; tE ujung"); }
+          h.t = t;
+          const lebar_txt = `b=${h.lebar.toFixed(0)} mm` + (h.jenis === "antara_palka" ? " penuh" : "");
+          lap.baris(`Lajur geladak ${h.nama} - ${LJ.NAMA_JENIS_GELADAK[h.jenis].toLowerCase()} (${lebar_txt})`, kd,
+            `y=${f2(h.y1)}-${f2(max(h.y0, 0))} m dari CL; ${dasar}`, t, "mm", ref, t);
+          if (h.jenis === "samping_palka" && lbp_ > 0 && h.y0 < lbp_ / 2 - 0.01)
+            lap.catatan(`Daerah ${kd}: lajur ${h.nama} masuk ke dalam garis palka (y dalam ${f2(h.y0)} m < ${f2(lbp_ / 2)} m); di dalam garis palka cukup tebal tE (Sec 7, A.7.1).`);
+        }
+        const sisa = pos.length ? pos[pos.length - 1].y0 : y_t;
+        if (Math.abs(sisa) > 0.05)
+          lap.catatan(`Daerah ${kd}: jumlah lebar lajur geladak ${sisa > 0 ? "kurang" : "lebih"} ${f2(Math.abs(sisa))} m dari setengah lebar geladak (${f2(y_t)} m) - atur kembali lebar lajur geladak.`);
+        if (kd !== "M") lap.catatan(`Daerah ${kd}: lebar lajur samping palka disesuaikan dengan setengah lebar geladak setempat (${f2(y_t)} m); lajur tepi dan antara palka tetap.`);
+        LAJUR_DEK[kd] = pos;
+      }
+      lap.lajur_geladak = LAJUR_DEK;
+    }
     if (z_antara) {
       lap.judul("Geladak antara (lower deck)");
       for (const [kd] of DAERAH) {
@@ -1971,7 +2024,7 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
 (function () {
 "use strict";
 const $ = s => document.querySelector(s);
-const DEFAULT = {"KAPAL": {"nama": "MV CONTOH - General Cargo", "L": 85.0, "B": 14.6, "H": 7.5, "T": 6.0, "CB": 0.72, "v0": 12.0, "daerah_pelayaran": "unlimited", "ReH": 235, "displacement": null, "Tb": 2.6, "Tmin": 2.6, "beban_miring": true}, "SISTEM": {"alas": "melintang", "sisi": "melintang", "geladak": "melintang"}, "JARAK": {"a": 0.6, "a_pembujur": 0.65, "e_gading_besar": 2.4, "jarak_wrang_pelat": 1.8, "hDB": 1.1}, "GELADAK": {"z_geladak_antara": null, "lebar_palka": 8.0, "panjang_palka": 14.4, "muatan_geladak_pc": null, "tinggi_muatan_geladak": null}, "BENTANG": {"gading_utama": null, "lKu": null, "lKo": null, "balok_geladak": null, "penumpu_geladak": null, "lebar_beban_penumpu": null, "pembujur": null, "gading_ceruk": null, "wrang_terbuka": null, "penegar_alas_haluan": null}, "MUATAN": {"G_per_V": 0.7, "tinggi_muatan": null, "tanpa_ceiling": false, "ruang_kosong_saat_muatan_penuh": false}, "TANGKI_DASAR_GANDA": {"ada": true, "rho": 1.025, "z_puncak_pipa_limpah": null, "pv": 0.0}, "SEKAT": {"lebar_lajur_pelat": 1.8, "jarak_penegar": 0.6, "tumpuan_penegar": "jepit_bebas", "z_atas_sekat_tubrukan": null}, "BANGUNAN_ATAS": {"akil": {"tinggi": 2.4, "x_belakang_L": 0.9}, "kimbul": {"tinggi": 2.4, "x_depan_L": 0.22, "x_belakang_L": 0.0}, "rumah_geladak": [{"nama": "Boat deck", "tingkat": 2, "x_depan_L": 0.2, "lebar": 11.0, "tinggi": 2.4, "x_belakang_L": 0.08}, {"nama": "Navigation deck", "tingkat": 3, "x_depan_L": 0.19, "lebar": 9.0, "tinggi": 2.4, "x_belakang_L": 0.1}], "jarak_penegar_dinding": 0.6, "bentang_balok_rumah": 2.8}, "LAIN": {"kubu_tinggi": 1.0, "kubu_jarak_stay": 1.2, "kamar_mesin_Hu": null, "pilar_panjang": null, "pembulatan_tebal": 0.5}, "LAJUR": {"jari_jari_bilga": 1.2, "sama_semua_daerah": true, "M": [{"nama": "K", "jenis": "lunas", "lebar": 1250}, {"nama": "A1", "jenis": "alas", "lebar": 1750}, {"nama": "A2", "jenis": "alas", "lebar": 1750}, {"nama": "A3", "jenis": "alas", "lebar": 1825}, {"nama": "B", "jenis": "bilga", "lebar": 2200}, {"nama": "S1", "jenis": "sisi", "lebar": 1600}, {"nama": "S2", "jenis": "sisi", "lebar": 1600}, {"nama": "S3", "jenis": "sisi", "lebar": 1685}, {"nama": "SH", "jenis": "lajur_atas", "lebar": 1250}], "A": null, "F": null}, "KAMAR_MESIN": {"daya_mesin_kW": 1500, "hDB_km": 1.2, "jumlah_penumpu_per_sisi": 1, "jarak_penumpu_dari_CL": 0.6, "tinggi_pondasi": 0.6, "lebar_pelat_hadap": 300, "diameter_baut": 24, "lebar_mesin": 1.6, "tinggi_mesin": 2.4, "panjang_mesin": 5.0, "geladak": [4.4]}, "PENAMPANG": {"A": {"model": "titik", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}, "F": {"model": "sederhana", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}}, "SENTA": {"jumlah_ruang_muat": 0, "jumlah_kamar_mesin": null, "mesin_di_belakang": true, "cross_tie": 0}};
+const DEFAULT = {"KAPAL": {"nama": "MV CONTOH - General Cargo", "L": 85.0, "B": 14.6, "H": 7.5, "T": 6.0, "CB": 0.72, "v0": 12.0, "daerah_pelayaran": "unlimited", "ReH": 235, "displacement": null, "Tb": 2.6, "Tmin": 2.6, "beban_miring": true}, "SISTEM": {"alas": "melintang", "sisi": "melintang", "geladak": "melintang"}, "JARAK": {"a": 0.6, "a_pembujur": 0.65, "e_gading_besar": 2.4, "jarak_wrang_pelat": 1.8, "hDB": 1.1}, "GELADAK": {"z_geladak_antara": null, "lebar_palka": 8.0, "panjang_palka": 14.4, "muatan_geladak_pc": null, "tinggi_muatan_geladak": null}, "BENTANG": {"gading_utama": null, "lKu": null, "lKo": null, "balok_geladak": null, "penumpu_geladak": null, "lebar_beban_penumpu": null, "pembujur": null, "gading_ceruk": null, "wrang_terbuka": null, "penegar_alas_haluan": null}, "MUATAN": {"G_per_V": 0.7, "tinggi_muatan": null, "tanpa_ceiling": false, "ruang_kosong_saat_muatan_penuh": false}, "TANGKI_DASAR_GANDA": {"ada": true, "rho": 1.025, "z_puncak_pipa_limpah": null, "pv": 0.0}, "SEKAT": {"lebar_lajur_pelat": 1.8, "jarak_penegar": 0.6, "tumpuan_penegar": "jepit_bebas", "z_atas_sekat_tubrukan": null}, "BANGUNAN_ATAS": {"akil": {"tinggi": 2.4, "x_belakang_L": 0.9}, "kimbul": {"tinggi": 2.4, "x_depan_L": 0.22, "x_belakang_L": 0.0}, "rumah_geladak": [{"nama": "Boat deck", "tingkat": 2, "x_depan_L": 0.2, "lebar": 11.0, "tinggi": 2.4, "x_belakang_L": 0.08}, {"nama": "Navigation deck", "tingkat": 3, "x_depan_L": 0.19, "lebar": 9.0, "tinggi": 2.4, "x_belakang_L": 0.1}], "jarak_penegar_dinding": 0.6, "bentang_balok_rumah": 2.8}, "LAIN": {"kubu_tinggi": 1.0, "kubu_jarak_stay": 1.2, "kamar_mesin_Hu": null, "pilar_panjang": null, "pembulatan_tebal": 0.5}, "LAJUR": {"jari_jari_bilga": 1.2, "sama_semua_daerah": true, "M": [{"nama": "K", "jenis": "lunas", "lebar": 1250}, {"nama": "A1", "jenis": "alas", "lebar": 1750}, {"nama": "A2", "jenis": "alas", "lebar": 1750}, {"nama": "A3", "jenis": "alas", "lebar": 1825}, {"nama": "B", "jenis": "bilga", "lebar": 2200}, {"nama": "S1", "jenis": "sisi", "lebar": 1600}, {"nama": "S2", "jenis": "sisi", "lebar": 1600}, {"nama": "S3", "jenis": "sisi", "lebar": 1685}, {"nama": "SH", "jenis": "lajur_atas", "lebar": 1250}], "A": null, "F": null}, "KAMAR_MESIN": {"daya_mesin_kW": 1500, "hDB_km": 1.2, "jumlah_penumpu_per_sisi": 1, "jarak_penumpu_dari_CL": 0.6, "tinggi_pondasi": 0.6, "lebar_pelat_hadap": 300, "diameter_baut": 24, "lebar_mesin": 1.6, "tinggi_mesin": 2.4, "panjang_mesin": 5.0, "geladak": [4.4]}, "PENAMPANG": {"A": {"model": "titik", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}, "F": {"model": "sederhana", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}}, "SENTA": {"jumlah_ruang_muat": 0, "jumlah_kamar_mesin": null, "mesin_di_belakang": true, "cross_tie": 0}, "LAJUR_GELADAK": {"daftar": null}};
 const STORE_KEY = "bki-hull-input-v1";
 
 // ---------------------------------------------------------------- schema
@@ -2199,6 +2252,9 @@ const GROUPS = [
     ["LAJUR", "sama_semua_daerah", "Lebar lajur sama untuk daerah A, M, F", "", "c", {}],
     ["__lajur"],
   ]},
+  { id: "lajurdek", title: "Lajur pelat geladak (lebar)", sec: "Sec 7", fields: [
+    ["__lajurdek"],
+  ]},
   { id: "pen", title: "Bentuk penampang A & F", sec: "geometri", fields: [
     ["__pen"],
   ]},
@@ -2315,6 +2371,7 @@ function buildForm() {
       if (f[0] === "__fig") { const dv = document.createElement("div"); dv.className = "figwrap"; dv.innerHTML = bentangFig(); box.appendChild(dv); continue; }
       if (f[0] === "__tiers") { box.appendChild(buildTiers()); continue; }
       if (f[0] === "__lajur") { box.appendChild(buildLajur()); continue; }
+      if (f[0] === "__lajurdek") { box.appendChild(buildLajurDek()); continue; }
       if (f[0] === "__dekkm") { box.appendChild(buildDekKM()); continue; }
       if (f[0] === "__pen") { box.appendChild(buildPen()); continue; }
       if (f[0] === "__note") { const p = document.createElement("p"); p.className = "hint"; p.style.cssText = "margin:0;grid-column:1/-1;font-size:11.5px;color:var(--muted)"; p.textContent = f[1]; box.appendChild(p); continue; }
@@ -2604,6 +2661,74 @@ function buildLajur() {
   setTimeout(refreshLajurInfo, 0);
   return box;
 }
+// ---- editor lajur pelat geladak (dari sisi ke CL)
+const JENIS_DEK = [["tepi", "Tepi"], ["samping_palka", "Samping palka"], ["antara_palka", "Antara palka"]];
+function autoDek() { const K = state.KAPAL; return BKI.LJ.rencana_geladak(K.L, K.B, state.GELADAK.lebar_palka || 0, 1.8, geomFor("M").yd); }
+function buildLajurDek() {
+  if (!state.LAJUR_GELADAK) state.LAJUR_GELADAK = { daftar: null };
+  const LG = state.LAJUR_GELADAK, otomatis = !(LG.daftar && LG.daftar.length);
+  const list = otomatis ? autoDek() : LG.daftar;
+  const box = document.createElement("div"); box.className = "lj"; box.id = "ljDekBox";
+  let html = `<p class="hint" style="margin:0;font-size:11.5px;color:var(--muted)">Urut dari sisi kapal ke CL (daerah M). Lebar diukur melintang; lajur <b>antara palka</b> ditulis lebar penuh (simetris CL, biasanya = lebar palka). Tebal: tepi = maks(geladak, sisi) Sec 7 A.5.3; samping palka = geladak kekuatan; antara palka = tE Sec 7 A.7.1. Di A dan F lebar lajur samping palka disesuaikan otomatis.</p>`;
+  html += `<div class="autobt"><span>${otomatis ? "Rencana otomatis (ubah angka mana saja untuk mengisi sendiri)." : "Memakai lebar isian sendiri."}</span>${otomatis ? "" : `<button type="button" class="small" data-act="reset">Kembali ke otomatis</button>`}</div>`;
+  html += `<div style="overflow-x:auto"><table class="lj-tbl"><thead><tr><th>Nama</th><th>Jenis</th><th style="text-align:right">Lebar mm</th><th style="text-align:right">y dari CL</th><th></th></tr></thead><tbody>`;
+  list.forEach((r, i) => {
+    html += `<tr data-i="${i}"><td style="width:16%"><input type="text" data-k="nama" value="${esc(r.nama)}" aria-label="Nama lajur geladak ${i + 1}"></td>
+      <td style="width:32%"><select data-k="jenis" aria-label="Jenis lajur geladak ${i + 1}">${JENIS_DEK.map(([v, t]) => `<option value="${v}" ${v === r.jenis ? "selected" : ""}>${t}</option>`).join("")}</select></td>
+      <td style="width:20%"><input type="number" step="50" min="100" inputmode="numeric" data-k="lebar" value="${r.lebar}" aria-label="Lebar lajur geladak ${i + 1}"></td>
+      <td class="z" data-y="${i}"></td>
+      <td style="white-space:nowrap"><button type="button" class="ic ghost" data-act="up" aria-label="Naikkan">↑</button><button type="button" class="ic ghost" data-act="rm" aria-label="Hapus">✕</button></td></tr>`;
+  });
+  html += `</tbody></table></div><div class="lj-sum" id="ljDekSum"></div>
+    <div class="lj-actions"><button type="button" class="small" data-act="add">Tambah lajur</button>
+    <button type="button" class="small" data-act="fit">Pas-kan lajur samping palka terakhir</button></div>`;
+  box.innerHTML = html;
+  const jadikanManual = () => { if (!(LG.daftar && LG.daftar.length)) LG.daftar = list; };
+  box.querySelectorAll("tr[data-i]").forEach(tr => {
+    const i = +tr.dataset.i;
+    tr.querySelectorAll("input,select").forEach(el => el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => {
+      const k = el.dataset.k;
+      if (k === "lebar") {
+        const n = Number(el.value), bad = !isFinite(n) || n < 100 || n > 40000;
+        el.classList.toggle("bad", bad); if (bad) return; list[i].lebar = n;
+      } else list[i][k] = el.value;
+      const was = !(LG.daftar && LG.daftar.length); jadikanManual();
+      if (was) rebuildLajurDek(); else refreshLajurDekInfo();
+      changed();
+    }));
+    tr.querySelector('[data-act="up"]').addEventListener("click", () => { if (i > 0) { jadikanManual(); [list[i - 1], list[i]] = [list[i], list[i - 1]]; rebuildLajurDek(); changed(); } });
+    tr.querySelector('[data-act="rm"]').addEventListener("click", () => { if (list.length > 1) { jadikanManual(); list.splice(i, 1); rebuildLajurDek(); changed(); } });
+  });
+  box.querySelector('[data-act="add"]').addEventListener("click", () => {
+    jadikanManual();
+    const c = list.findIndex(r => r.jenis === "antara_palka"), n = list.filter(r => r.jenis === "samping_palka").length + 1;
+    list.splice(c >= 0 ? c : list.length, 0, { nama: `D${n}`, jenis: "samping_palka", lebar: 1000 }); rebuildLajurDek(); changed();
+  });
+  box.querySelector('[data-act="fit"]').addEventListener("click", () => {
+    const yd = geomFor("M").yd, pos = BKI.LJ.posisi_lajur_geladak(list, yd), sisa = pos.length ? pos[pos.length - 1].y0 : yd;
+    let j = -1; list.forEach((r, i) => { if (r.jenis === "samping_palka") j = i; });
+    if (j < 0) return;
+    const nb = Math.round(list[j].lebar + sisa * 1000);
+    if (nb >= 100) { jadikanManual(); list[j].lebar = nb; rebuildLajurDek(); changed(); }
+  });
+  const rs = box.querySelector('[data-act="reset"]');
+  if (rs) rs.addEventListener("click", () => { LG.daftar = null; rebuildLajurDek(); changed(); });
+  box._list = list;
+  setTimeout(refreshLajurDekInfo, 0);
+  return box;
+}
+function rebuildLajurDek() { const old = document.getElementById("ljDekBox"); if (old) old.replaceWith(buildLajurDek()); }
+function refreshLajurDekInfo() {
+  const box = document.getElementById("ljDekBox"); if (!box) return;
+  const list = box._list, yd = geomFor("M").yd, pos = BKI.LJ.posisi_lajur_geladak(list, yd);
+  pos.forEach((p, i) => { const c = box.querySelector(`[data-y="${i}"]`); if (c) c.textContent = `${fmt(Math.round(p.y1 * 100) / 100)}–${fmt(Math.round(Math.max(p.y0, 0) * 100) / 100)}`; });
+  const sisa = pos.length ? pos[pos.length - 1].y0 : yd, hb = (state.GELADAK.lebar_palka || 0) / 2;
+  let msg = `Setengah lebar geladak M = ${fmt(Math.round(yd * 100) / 100)} m. `;
+  msg += Math.abs(sisa) <= 0.05 ? "Jumlah lebar pas." : `Jumlah lebar ${sisa > 0 ? "kurang" : "lebih"} ${Math.round(Math.abs(sisa) * 1000)} mm.`;
+  const masuk = pos.find(p => p.jenis === "samping_palka" && hb > 0 && p.y0 < hb - 0.01);
+  if (masuk) msg += ` Lajur ${masuk.nama} masuk ke dalam garis palka (y = ${fmt(hb)} m).`;
+  const el = document.getElementById("ljDekSum"); if (el) { el.textContent = msg; el.classList.toggle("bad", Math.abs(sisa) > 0.05); }
+}
 function rebuildLajur() { const old = document.getElementById("ljBox"); if (old) old.replaceWith(buildLajur()); }
 function refreshLajurInfo() {
   const box = document.getElementById("ljBox"); if (!box) return;
@@ -2823,8 +2948,9 @@ function renderSummary() {
 
   return `<div class="sum-grid">
     ${sectionCard()}
-      <div class="card tbl-wrap"><h3>Geladak &amp; konstruksi alas (mm)</h3>
+      <div class="sum-col"><div class="card tbl-wrap"><h3>Geladak &amp; konstruksi alas (mm)</h3>
         <table class="mx"><thead><tr><th>Komponen</th><th>A · buritan</th><th>M · tengah</th><th>F · haluan</th></tr></thead><tbody>${tp}${ts}</tbody></table></div>
+      ${dekCard()}</div>
       ${lajurCard()}
       <div class="card tbl-wrap span2"><h3>Modulus penampang &amp; profil usulan</h3>
         <table class="mx"><thead><tr><th>Komponen</th><th>A · buritan</th><th>M · tengah</th><th>F · haluan</th></tr></thead><tbody>${tm}
@@ -2854,6 +2980,17 @@ function bindSec(root) {
     secZone = b.dataset.sec; try { localStorage.setItem(STORE_KEY + "-sec", secZone); } catch (e) {}
     const c = document.getElementById("secCard"); c.outerHTML = sectionCard(); bindSec(document.getElementById("secCard"));
   }));
+}
+function dekCard() {
+  const D = lap.lajur_geladak; if (!D || !D.M) return "";
+  const Z = ["A", "M", "F"];
+  let rows = "";
+  D.M.forEach((m, i) => {
+    rows += `<tr><td>${esc(m.nama)} · ${BKI.LJ.NAMA_JENIS_GELADAK[m.jenis]}<span class="sub" style="color:var(--muted)">b = ${fmt(m.lebar)} mm${m.jenis === "antara_palka" ? " (penuh)" : ""} · y ${fmt(Math.round(m.y1 * 100) / 100)}–${fmt(Math.round(Math.max(m.y0, 0) * 100) / 100)} m</span></td>` +
+      Z.map(z => { const h = (D[z] || [])[i]; return h ? `<td>${fmt(h.t)}${z !== "M" ? `<span class="sub">${Math.round(h.lebar)} mm</span>` : ""}</td>` : "<td>–</td>"; }).join("") + "</tr>";
+  });
+  return `<div class="card tbl-wrap"><h3>Lajur pelat geladak – tebal dipakai (mm), dari sisi ke CL</h3>
+    <table class="mx"><thead><tr><th>Lajur</th><th>A · buritan</th><th>M · tengah</th><th>F · haluan</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function lajurCard() {
   const H = lap.lajur && lap.lajur.hasil; if (!H) return "";
@@ -3042,11 +3179,20 @@ function konstruksiSVG(o) {
         if (sg === 1 && !km && i === 0) lbl(ex - 2, ey, X(ys(st.z) - hw - 0.45), ey + 20, "Senta sisi", st.prof, "end");
       });
     }
+    // kampuh lajur pelat geladak + nama lajur
+    if (!km && lap.lajur_geladak && lap.lajur_geladak[zone]) {
+      lap.lajur_geladak[zone].forEach(h => {
+        if (h.y0 > 0.02) g += `<path d="M${xs(h.y0).toFixed(1)} ${(Y(H) - 6).toFixed(1)} L${xs(h.y0).toFixed(1)} ${(Y(H) + 6).toFixed(1)}" class="seamD"/>`;
+        if (sg === 1 && o.label && h.jenis !== "tepi") { const xm = xs((h.y1 + Math.max(h.y0, 0)) / 2); lab += `<text x="${xm.toFixed(1)}" y="${(Y(H) - 7).toFixed(1)}" text-anchor="middle" class="dkl">${esc(h.nama)} ${fmt(h.t)}</text>`.replace(`y="${(Y(H) - 7).toFixed(1)}"`, `y="${(Y(H) + 18).toFixed(1)}"`); }
+      });
+    }
     // lajur tepi geladak (deck stringer plate)
     if (!km) {
       const ld = find("Lajur tepi geladak - lebar", ""), bst = ld ? (ld[4] || ld[3]) / 1000 : 1.2, ts = val("Lajur tepi geladak - tebal");
-      g += `<path d="M${xs(G.yd)} ${(Y(H) - 1.6).toFixed(1)} L${xs(Math.max(G.yd - bst, 0))} ${(Y(H) - 1.6).toFixed(1)}" class="dstr"/>`;
-      if (sg === 1) lbl(xs(G.yd - bst / 2), Y(H) - 4, xs(G.yd) - 12, Y(H + 0.55), `Lajur tepi geladak ${fmt(ts)} mm`, `lebar ${Math.round(bst * 1000)} mm`, "end");
+      const dsr = lap.lajur_geladak && lap.lajur_geladak[zone] && lap.lajur_geladak[zone].find(h => h.jenis === "tepi");
+      const bstx = dsr ? dsr.y1 - dsr.y0 : bst;
+      g += `<path d="M${xs(G.yd)} ${(Y(H) - 1.6).toFixed(1)} L${xs(Math.max(G.yd - bstx, 0))} ${(Y(H) - 1.6).toFixed(1)}" class="dstr"/>`;
+      if (sg === 1) lbl(xs(G.yd - bstx / 2), Y(H) - 4, xs(G.yd) - 12, Y(H + 0.55), `${dsr ? dsr.nama + " · " : ""}Lajur tepi geladak ${fmt(ts)} mm`, `lebar ${Math.round(bstx * 1000)} mm`, "end");
     }
     // kubu-kubu + stay
     const hk = state.LAIN.kubu_tinggi || 1;
@@ -3068,7 +3214,8 @@ function konstruksiSVG(o) {
     .pil{stroke:var(--navy);stroke-width:1.4;stroke-dasharray:6 3;fill:none}
     .bw{stroke:var(--navy);stroke-width:2;fill:none} .bw.thin{stroke-width:1.2}
     .senta{stroke:var(--navy);stroke-width:2.6;fill:none} .senta.f{stroke-width:3.2}
-    .dstr{stroke:var(--accent);stroke-width:4.5;fill:none;stroke-linecap:butt}`;
+    .dstr{stroke:var(--accent);stroke-width:4.5;fill:none;stroke-linecap:butt}
+    .seamD{stroke:var(--accent);stroke-width:2;fill:none} .dkl{font-family:var(--f-mono);font-size:10px;font-weight:600;fill:var(--accent)}`;
   return { g, lab, css };
 }
 function sectionSVG(zone) {
