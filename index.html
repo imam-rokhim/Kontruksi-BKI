@@ -84,6 +84,10 @@ details.grp[open] > summary::after { content: "–"; }
 .tier { border: 1px dashed var(--line); border-radius: 6px; padding: 8px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .tier .field.name { grid-column: 1 / 3; }
 .tier .rm { align-self: end; }
+.tier .tinfo { grid-column: 1 / -1; margin: 0; font-size: 11px; line-height: 1.35; color: var(--muted); font-family: var(--f-mono); }
+.baconv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; }
+.baconv input { width: 80px; font-family: var(--f-mono); padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); color: var(--ink); }
+.baconv output { font-family: var(--f-mono); font-weight: 600; color: var(--navy); }
 .lj { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
 .lj-reg { display: flex; gap: 4px; }
 .lj-reg button[aria-pressed="true"] { background: var(--navy); color: var(--panel); border-color: var(--navy); }
@@ -274,6 +278,10 @@ details.grp[open] > summary::after { content: "–"; }
 .tier { border: 1px dashed var(--line); border-radius: 6px; padding: 8px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .tier .field.name { grid-column: 1 / 3; }
 .tier .rm { align-self: end; }
+.tier .tinfo { grid-column: 1 / -1; margin: 0; font-size: 11px; line-height: 1.35; color: var(--muted); font-family: var(--f-mono); }
+.baconv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; }
+.baconv input { width: 80px; font-family: var(--f-mono); padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); color: var(--ink); }
+.baconv output { font-family: var(--f-mono); font-weight: 600; color: var(--navy); }
 .lj { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
 .lj-reg { display: flex; gap: 4px; }
 .lj-reg button[aria-pressed="true"] { background: var(--navy); color: var(--panel); border-color: var(--navy); }
@@ -2107,12 +2115,18 @@ const HELP = {
   "SEKAT.tumpuan_penegar": ["Jenis sambungan ujung penegar sekat.", "Jepit kedua ujung: braket di atas dan bawah. Jepit–bebas: braket di satu ujung, ujung lain dipotong (snip). Bebas kedua ujung: kedua ujung dipotong tanpa braket."],
   "SEKAT.z_atas_sekat_tubrukan": ["Kosong = H.", "Tinggi tepi atas sekat tubrukan dari baseline; isi bila sekat tubrukan naik sampai geladak akil."],
 
-  "BANGUNAN_ATAS.akil.tinggi": ["Tinggi geladak akil di atas geladak utama.", ""],
-  "BANGUNAN_ATAS.akil.x_belakang_L": ["Posisi dinding belakang akil, x dari AP / L.", "x diukur dari AP (buritan) ke depan, dibagi L. Mis. 0,90 berarti akil mulai di 0,9L dan menerus sampai FP."],
-  "BANGUNAN_ATAS.kimbul.tinggi": ["Tinggi geladak kimbul di atas geladak utama.", ""],
-  "BANGUNAN_ATAS.kimbul.x_depan_L": ["Posisi dinding depan kimbul, x dari AP / L.", "Mis. 0,22 berarti dinding depan kimbul berada 0,22L dari AP. Dinding ini tingkat 1 untuk beban rumah geladak (Sec 16)."],
-  "BANGUNAN_ATAS.jarak_penegar_dinding": ["Biasanya = jarak gading a.", "", s => s.JARAK.a],
-  "BANGUNAN_ATAS.bentang_balok_rumah": ["Antar tumpuan balok geladak rumah.", "Jarak antara dinding samping rumah geladak dan penumpu/dinding tengah yang menumpu balok geladak bangunan atas."],
+  "BANGUNAN_ATAS.akil.tinggi": ["Dari geladak utama ke geladak akil, di sisi kapal (± 2,2–2,6 m).",
+    "Akil (forecastle) = bangunan tertutup di ujung haluan, di atas geladak utama, menerus sampai linggi haluan. Ukur tegak dari sisi atas geladak utama sampai sisi atas geladak akil, di sisi kapal. Ambil dari gambar Rencana Umum (General Arrangement) tampak samping. Isi 0 bila kapal tanpa akil."],
+  "BANGUNAN_ATAS.akil.x_belakang_L": ["Jarak dinding belakang akil dari AP ÷ L (mis. 0,90).",
+    "Ukur jarak mendatar dari AP (garis tegak buritan, biasanya di sumbu tongkat kemudi) sampai dinding belakang akil, lalu bagi dengan L. Contoh: L = 85 m, dinding belakang akil di 76,5 m dari AP → x/L = 76,5 / 85 = 0,90. Akil dianggap menerus dari titik ini sampai FP. Pakai alat bantu \"m → x/L\" di gambar atas."],
+  "BANGUNAN_ATAS.kimbul.tinggi": ["Dari geladak utama ke geladak kimbul, di sisi kapal (± 2,2–2,6 m).",
+    "Kimbul (poop) = bangunan tertutup di ujung buritan, di atas geladak utama, mulai dari buritan kapal. Biasanya berisi akomodasi dan selubung kamar mesin. Ukur tegak dari sisi atas geladak utama sampai sisi atas geladak kimbul di sisi kapal, dari gambar Rencana Umum."],
+  "BANGUNAN_ATAS.kimbul.x_depan_L": ["Jarak dinding depan kimbul dari AP ÷ L (mis. 0,22).",
+    "Ukur jarak mendatar dari AP sampai dinding depan kimbul, lalu bagi dengan L. Contoh: dinding depan di 18,7 m dari AP, L = 85 m → x/L = 0,22. Dinding depan kimbul dihitung sebagai dinding tingkat 1, yaitu dinding yang paling berat bebannya (Sec 16 C.2)."],
+  "BANGUNAN_ATAS.jarak_penegar_dinding": ["Jarak antar penegar tegak dinding; biasanya = jarak gading a.",
+    "Jarak antara penegar tegak (stiffener) pada dinding depan, samping dan belakang bangunan atas atau rumah geladak. Dipakai untuk tebal pelat dinding dan modulus penegarnya (Sec 16 C.3).", s => s.JARAK.a],
+  "BANGUNAN_ATAS.bentang_balok_rumah": ["Lebar yang dilintasi balok geladak tanpa tumpuan (± 2,5–3,5 m).",
+    "Bentang balok geladak di bangunan atas dan rumah geladak: jarak melintang antara dua tumpuan balok, yaitu dinding samping rumah, dinding memanjang di dalam (koridor), atau penumpu geladak. Lihat penampang melintang rumah geladak; ambil jarak tumpuan terbesar. Bila rumah selebar b' tanpa dinding tengah atau penumpu, bentangnya = b'."],
 
   "KAMAR_MESIN.daya_mesin_kW": ["Daya MCR satu mesin; 0 = lewati.", "Daya satu mesin penggerak utama [kW]. Menentukan tebal penumpu pondasi, luas pelat hadap dan tambahan tebal wrang kamar mesin (Sec 8 C)."],
   "KAMAR_MESIN.hDB_km": ["Kosong = sama dengan hDB.", "Tinggi dasar ganda di kamar mesin; sering dibuat lebih tinggi dari ruang muat agar penumpu pondasi kaku."],
@@ -2142,7 +2156,7 @@ const GROUP_INTRO = {
   bentang: "Semua bentang dihitung otomatis dari ukuran utama, palka, jarak gading besar, dasar ganda dan senta. Kosongkan kolom = otomatis (nilainya tampil abu-abu di kolom). Isi angka hanya bila gambar Anda berbeda. Hasil dan dasar perhitungannya ada di lembar 1 Data & Koefisien.",
   muatan: "",
   sekat: "",
-  ba: "Posisi memanjang x/L diukur dari AP (buritan) ke depan. Rumah geladak tingkat 2 ke atas diisi pada daftar di bawah; nama tingkat sesuai urutan dari geladak utama (kimbul = tingkat 1).",
+  ba: "Istilah: AKIL = bangunan di haluan (forecastle); KIMBUL = bangunan di buritan (poop); RUMAH GELADAK = bangunan yang lebih sempit dari lebar kapal (deckhouse), bertingkat di atas kimbul. Tingkat dihitung dari geladak utama: dinding depan kimbul = tingkat 1, rumah di atas kimbul = tingkat 2, dst. Posisi memanjang ditulis x/L = jarak dari AP ÷ L (AP = buritan, x/L = 0; FP = haluan, x/L = 1). Gambar di bawah ikut berubah sesuai isian.",
   km: "Ambil ukuran dari gambar pondasi pabrik mesin. Sketsa kamar mesin ada di Ringkasan, daerah A.",
 };
 
@@ -2302,12 +2316,13 @@ const GROUPS = [
     ["SENTA", "mesin_di_belakang", "Mesin di belakang (senta KM wajib)", "", "c", {}],
   ]},
   { id: "ba", title: "Bangunan atas & rumah geladak", sec: "Sec 16", fields: [
-    ["BANGUNAN_ATAS.akil", "tinggi", "Tinggi akil", "m", "n", { step: 0.05 }],
-    ["BANGUNAN_ATAS.akil", "x_belakang_L", "Ujung belakang akil x/L", "", "n", { step: 0.01 }],
-    ["BANGUNAN_ATAS.kimbul", "tinggi", "Tinggi kimbul", "m", "n", { step: 0.05 }],
-    ["BANGUNAN_ATAS.kimbul", "x_depan_L", "Dinding depan kimbul x/L", "", "n", { step: 0.01 }],
+    ["__bafig"],
+    ["BANGUNAN_ATAS.akil", "tinggi", "Akil (haluan): tinggi", "m", "n", { step: 0.05 }],
+    ["BANGUNAN_ATAS.akil", "x_belakang_L", "Akil: dinding belakang x/L", "", "n", { step: 0.01 }],
+    ["BANGUNAN_ATAS.kimbul", "tinggi", "Kimbul (buritan): tinggi", "m", "n", { step: 0.05 }],
+    ["BANGUNAN_ATAS.kimbul", "x_depan_L", "Kimbul: dinding depan x/L", "", "n", { step: 0.01 }],
     ["BANGUNAN_ATAS", "jarak_penegar_dinding", "Jarak penegar dinding", "m", "n", { step: 0.01 }],
-    ["BANGUNAN_ATAS", "bentang_balok_rumah", "Bentang balok rumah geladak", "m", "n", { step: 0.05 }],
+    ["BANGUNAN_ATAS", "bentang_balok_rumah", "Bentang balok geladak rumah", "m", "n", { step: 0.05 }],
     ["__tiers"],
   ]},
   { id: "km", title: "Kamar mesin & pondasi mesin", sec: "Sec 8 C", fields: [
@@ -2368,6 +2383,7 @@ function buildForm() {
         });
         box.appendChild(dv); continue;
       }
+      if (f[0] === "__bafig") { const dv = document.createElement("div"); dv.className = "figwrap"; dv.id = "baFigWrap"; dv.innerHTML = baFigBox(); box.appendChild(dv); bindBaFig(dv); continue; }
       if (f[0] === "__fig") { const dv = document.createElement("div"); dv.className = "figwrap"; dv.innerHTML = bentangFig(); box.appendChild(dv); continue; }
       if (f[0] === "__tiers") { box.appendChild(buildTiers()); continue; }
       if (f[0] === "__lajur") { box.appendChild(buildLajur()); continue; }
@@ -2459,7 +2475,7 @@ function buildTiers() {
   const list = state.BANGUNAN_ATAS.rumah_geladak;
   const head = document.createElement("div");
   head.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px";
-  head.innerHTML = `<span style="font-size:12px;color:var(--muted)">Rumah geladak di atas kimbul (tingkat 2 ke atas)</span>`;
+  head.innerHTML = `<span style="font-size:12px;color:var(--muted)">Rumah geladak di atas kimbul (tingkat 2 ke atas), urut dari bawah ke atas. Satu baris = satu tingkat rumah.</span>`;
   const add = document.createElement("button"); add.type = "button"; add.className = "small"; add.textContent = "Tambah tingkat";
   add.addEventListener("click", () => {
     const last = list[list.length - 1];
@@ -2475,9 +2491,11 @@ function buildTiers() {
       return `<div class="field ${cls}"><label for="${id}"><span>${lab}</span><span class="u">${u}</span></label>
         <input type="${typ}" id="${id}" data-k="${k}" value="${esc(t[k])}" ${typ === "number" ? 'step="any" inputmode="decimal"' : ""}></div>`;
     };
-    r.innerHTML = fld("nama", "Nama geladak", "", "text", "name") + fld("tingkat", "Tingkat", "") +
-      fld("x_depan_L", "Depan x/L", "") + fld("x_belakang_L", "Belakang x/L", "") + fld("lebar", "Lebar", "m") +
-      fld("tinggi", "Tinggi", "m") + `<button type="button" class="small ghost rm">Hapus</button>`;
+    r.innerHTML = fld("nama", "Nama (geladak atapnya)", "", "text", "name") + fld("tingkat", "Tingkat ke-", "") +
+      fld("x_depan_L", "Dinding depan x/L", "") + fld("x_belakang_L", "Dinding belakang x/L", "") + fld("lebar", "Lebar rumah b'", "m") +
+      fld("tinggi", "Tinggi tingkat", "m") + `<button type="button" class="small ghost rm">Hapus</button>` +
+      `<p class="tinfo" data-tinfo="${i}"></p>`;
+    r.querySelectorAll("input").forEach(inp => { const tips = { nama: "Nama geladak yang menjadi atap tingkat ini, mis. Boat deck, Navigation deck.", tingkat: "Urutan dari geladak utama: dinding depan kimbul = 1, rumah pertama di atas kimbul = 2, berikutnya 3, dst.", x_depan_L: "Jarak dinding depan rumah dari AP dibagi L.", x_belakang_L: "Jarak dinding belakang rumah dari AP dibagi L.", lebar: "Lebar rumah geladak b' (dinding samping kiri ke kanan). Rumah yang sempit menerima beban dinding lebih kecil.", tinggi: "Tinggi dari geladak di bawahnya ke geladak atap tingkat ini (± 2,4 m)." }; inp.title = tips[inp.dataset.k] || ""; });
     r.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
       const k = inp.dataset.k;
       if (k === "nama") { t[k] = inp.value; changed(); return; }
@@ -2490,9 +2508,99 @@ function buildTiers() {
     box.appendChild(r);
   });
   box.id = "tiersBox";
+  setTimeout(refreshBaFig, 0);
   return box;
 }
-function rebuildTiers() { const old = $("#tiersBox"); old.replaceWith(buildTiers()); }
+function rebuildTiers() { const old = $("#tiersBox"); old.replaceWith(buildTiers()); refreshBaFig(); }
+// ---- gambar tampak samping bangunan atas (ikut isian) + alat bantu m -> x/L
+function baFigSVG() {
+  const K = state.KAPAL, BA = state.BANGUNAN_ATAS, L = K.L || 1;
+  const X0 = 26, X1 = 334, X = xl => X0 + (X1 - X0) * Math.min(Math.max(xl, 0), 1);
+  const hk = +BA.kimbul.tinggi || 0, ha = +BA.akil.tinggi || 0, tiers = BA.rumah_geladak || [];
+  const stack = hk + tiers.reduce((s, t) => s + (+t.tinggi || 0), 0);
+  const sz = Math.min(11, 108 / Math.max(stack, ha, 2.4)), DK = 40 + Math.max(stack, ha) * sz + 14;
+  const Yz = h => DK - h * sz;
+  const t = (x, y, s, a = "middle", c = "") => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" class="${c}">${esc(s)}</text>`;
+  const dim = (x1, x2, y, lab, c = "fd") => `<path d="M${x1.toFixed(1)} ${y} L${x2.toFixed(1)} ${y}" class="dl" marker-start="url(#baar)" marker-end="url(#baar)"/>` + t((x1 + x2) / 2, y - 3, lab, "middle", c);
+  const m = v => fmt(Math.round(v * 10) / 10);
+  let g = t(8, 14, "Tampak samping (dari Rencana Umum) – ikut isian", "start", "hd");
+  // lambung
+  g += `<path d="M${X0} ${DK} L${X1 + 6} ${DK - 6} L${X1 - 10} ${DK + 44} L${X0 + 26} ${DK + 44} L${X0 - 2} ${DK + 26} Z" class="hl"/>`;
+  g += `<path d="M${X0} ${DK} L${X1 + 6} ${DK - 6}" class="dk"/>` + t(X(0.5), DK + 14, "geladak utama", "middle", "mu");
+  // kimbul
+  const xk0 = X(BA.kimbul.x_belakang_L || 0), xk1 = X(BA.kimbul.x_depan_L || 0);
+  if (hk > 0 && xk1 > xk0) {
+    g += `<rect x="${xk0.toFixed(1)}" y="${Yz(hk).toFixed(1)}" width="${(xk1 - xk0).toFixed(1)}" height="${(hk * sz).toFixed(1)}" class="ss"/>`;
+    g += `<path d="M${xk1.toFixed(1)} ${Yz(hk).toFixed(1)} L${xk1.toFixed(1)} ${DK}" class="wall"/>`;
+    g += t(xk1 + 5, Yz(hk / 2) + 3, "KIMBUL · dinding depan = tk 1", "start", "in");
+  }
+  // rumah geladak bertingkat
+  let z = hk;
+  tiers.forEach(tr => {
+    const h = +tr.tinggi || 0, a = X(tr.x_belakang_L ?? 0.04), b = X(tr.x_depan_L || 0);
+    if (h > 0 && b > a) {
+      g += `<rect x="${a.toFixed(1)}" y="${Yz(z + h).toFixed(1)}" width="${(b - a).toFixed(1)}" height="${(h * sz).toFixed(1)}" class="dh"/>`;
+      g += `<path d="M${b.toFixed(1)} ${Yz(z + h).toFixed(1)} L${b.toFixed(1)} ${Yz(z).toFixed(1)}" class="wall"/>`;
+      g += t(b + 5, Yz(z + h / 2) + 3, `tk ${tr.tingkat} · ${tr.nama || ""}`.slice(0, 28), "start", "in");
+    }
+    z += h;
+  });
+  // akil
+  const xa0 = X(BA.akil.x_belakang_L || 1);
+  if (ha > 0 && xa0 < X1) {
+    g += `<path d="M${xa0.toFixed(1)} ${DK - 5} L${xa0.toFixed(1)} ${(Yz(ha) - 5).toFixed(1)} L${X1 + 6} ${(Yz(ha) - 6).toFixed(1)} L${X1 + 6} ${DK - 6} Z" class="ss"/>`;
+    g += `<path d="M${xa0.toFixed(1)} ${(Yz(ha) - 5).toFixed(1)} L${xa0.toFixed(1)} ${DK - 5}" class="wall"/>`;
+    g += t((xa0 + X1) / 2 + 3, Yz(ha / 2) - 2, "AKIL", "middle", "in");
+    g += `<path d="M${(X1 + 12).toFixed(1)} ${DK - 6} L${(X1 + 12).toFixed(1)} ${(Yz(ha) - 6).toFixed(1)}" class="dl" marker-start="url(#baar)" marker-end="url(#baar)"/>`;
+    g += `<text x="${X1 + 22}" y="${((DK + Yz(ha)) / 2 - 6).toFixed(1)}" text-anchor="middle" class="fd" transform="rotate(-90 ${X1 + 22} ${((DK + Yz(ha)) / 2 - 6).toFixed(1)})">${m(ha)} m</text>`;
+  }
+  if (hk > 0) {
+    g += `<path d="M${X0 - 12} ${DK} L${X0 - 12} ${Yz(hk).toFixed(1)}" class="dl" marker-start="url(#baar)" marker-end="url(#baar)"/>`;
+    g += `<text x="${X0 - 16}" y="${((DK + Yz(hk)) / 2).toFixed(1)}" text-anchor="middle" class="fd" transform="rotate(-90 ${X0 - 16} ${((DK + Yz(hk)) / 2).toFixed(1)})">${m(hk)} m</text>`;
+  }
+  // ukuran memanjang dari AP
+  const y1 = DK + 60, y2 = DK + 80;
+  if (hk > 0) g += `<path d="M${xk1.toFixed(1)} ${DK} L${xk1.toFixed(1)} ${y1 + 4}" class="ext"/>` + dim(X0, xk1, y1, `x/L ${fmt(BA.kimbul.x_depan_L)} = ${m(BA.kimbul.x_depan_L * L)} m`);
+  if (ha > 0) g += `<path d="M${xa0.toFixed(1)} ${DK - 5} L${xa0.toFixed(1)} ${y2 + 4}" class="ext"/>` + dim(X0, xa0, y2, `x/L ${fmt(BA.akil.x_belakang_L)} = ${m(BA.akil.x_belakang_L * L)} m dari AP`);
+  // sumbu AP–FP
+  const ya = y2 + 16;
+  g += `<path d="M${X0} ${ya} L${X1} ${ya}" class="ax"/>`;
+  [0, 0.25, 0.5, 0.75, 1].forEach(v => { g += `<path d="M${X(v)} ${ya - 3} L${X(v)} ${ya + 3}" class="ax"/>` + t(X(v), ya + 14, v === 0 ? "AP 0" : v === 1 ? "FP 1" : fmt(v), "middle", "mu"); });
+  g += `<path d="M${X0} ${DK} L${X0} ${ya}" class="ext"/>`;
+  const H = ya + 22;
+  const css = `<style>
+    .bafg .hl{fill:var(--navy-soft);stroke:var(--navy);stroke-width:1.4}
+    .bafg .dk{stroke:var(--navy);stroke-width:2.4}
+    .bafg .ss{fill:var(--panel-2);stroke:var(--navy);stroke-width:1.4}
+    .bafg .dh{fill:var(--navy-soft);stroke:var(--navy);stroke-width:1.2}
+    .bafg .wall{stroke:var(--accent);stroke-width:3}
+    .bafg .dl{stroke:var(--ink);stroke-width:1;fill:none} .bafg .ah{fill:var(--ink)}
+    .bafg .ext{stroke:var(--muted);stroke-width:.8;stroke-dasharray:3 2;fill:none}
+    .bafg .ax{stroke:var(--muted);stroke-width:1;fill:none}
+    .bafg text{font-family:var(--f-mono);font-size:10px;fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:3px;stroke-linejoin:round}
+    .bafg .fd{font-weight:600} .bafg .mu{fill:var(--muted)} .bafg .in{font-size:9.5px;font-weight:600;fill:var(--navy)}
+    .bafg .hd{font-family:var(--f-body);font-weight:700;font-size:11px;fill:var(--navy)}
+  </style>`;
+  return `<svg class="bf bafg" viewBox="0 0 360 ${H.toFixed(0)}" role="img" aria-label="Tampak samping bangunan atas sesuai isian"><defs><marker id="baar" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.8 L7 4 L0 7.2 z" class="ah"/></marker></defs>${css}${g}</svg>`;
+}
+function baFigBox() {
+  return `<details class="figbox" open><summary>Gambar: posisi akil, kimbul & rumah geladak</summary><div id="baSvg">${baFigSVG()}</div>
+    <p class="hint">Garis merah = dinding depan (yang paling besar bebannya). Ukuran memanjang selalu dari AP (buritan). Tingkat dihitung dari geladak utama: dinding depan kimbul = tk 1, rumah di atasnya tk 2, 3, …</p>
+    <div class="baconv"><label for="baM">Bantu hitung: jarak dari AP</label><input type="number" id="baM" step="0.1" inputmode="decimal" placeholder="m"> m → x/L = <output id="baXL">–</output></div></details>`;
+}
+function bindBaFig(root) {
+  const inp = root.querySelector("#baM"), out = root.querySelector("#baXL");
+  if (inp) inp.addEventListener("input", () => { const v = Number(inp.value), L = state.KAPAL.L; out.textContent = inp.value !== "" && isFinite(v) && L > 0 ? fmt(Math.round(v / L * 1000) / 1000) : "–"; });
+}
+function refreshBaFig() {
+  const el = document.getElementById("baSvg"); if (el) el.innerHTML = baFigSVG();
+  const L = state.KAPAL.L, B = state.KAPAL.B;
+  (state.BANGUNAN_ATAS.rumah_geladak || []).forEach((tr, i) => {
+    const p = document.querySelector(`[data-tinfo="${i}"]`); if (!p) return;
+    const pj = ((tr.x_depan_L || 0) - (tr.x_belakang_L ?? 0)) * L;
+    p.textContent = `Dinding depan ${fmt(Math.round((tr.x_depan_L || 0) * L * 10) / 10)} m dari AP · belakang ${fmt(Math.round((tr.x_belakang_L ?? 0) * L * 10) / 10)} m · panjang ${fmt(Math.round(pj * 10) / 10)} m · lebar ${Math.round((tr.lebar || 0) / B * 100)}% B`;
+  });
+}
 function geomFor(reg) { const K = state.KAPAL; return BKI.LJ.geometri_daerah(reg, K.B, K.H, geomR(), state.PENAMPANG); }
 const PEN_BAWAAN = { A: ["0,95·B", "0,70·B", "0,12·B"], F: ["0,85·B", "0,30·B", "0,12·B"] };
 function penPts(reg) {
@@ -2747,7 +2855,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<"
 
 // ---------------------------------------------------------------- compute
 let lap = null, timer = null, tab = "ringkasan";
-function changed() { clearTimeout(timer); timer = setTimeout(() => { run(); save(); refreshPenInfo(); refreshLajurInfo(); }, 350); }
+function changed() { clearTimeout(timer); timer = setTimeout(() => { run(); save(); refreshPenInfo(); refreshLajurInfo(); refreshBaFig(); }, 350); }
 function sanity(s) {
   const K = s.KAPAL, e = [];
   if (K.T >= K.H) e.push("Sarat T harus lebih kecil dari tinggi H.");
