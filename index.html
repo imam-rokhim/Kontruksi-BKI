@@ -831,6 +831,13 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
     return { W, t_aksen: ta, tK, tmin, t_perlu: max(t, tmin) };
   };
 
+  // ---- Sec 17 ambang palka (hatch coaming)
+  R.ambang_palka_pelat = function (L, a, pA, ReH, tK = 1.5, c = 14.6) {
+    const ta = c * a * sqrt(pA / ReH), tmin = 6 + min(L, 300) / 100 + tK;
+    return { t_aksen: ta, t_rumus: ta + tK, tmin, t_perlu: max(ta + tK, tmin) };
+  };
+  R.penegar_ambang = (a, l, pA, ReH, fbc = 12, fp = 1, c = 1000) => ({ Wnet: c * a * l * l * pA / (fbc * fp * ReH), Anet: 10 * a * l * pA / ReH });
+  R.stay_ambang = (e, hs, hw, pA, ReH, tK = 1.5) => ({ Wnet: 526 / ReH * e * hs * hs * pA, tw: 2 * e * hs * pA / (ReH * hw) + tK });
   R.pondasi_mesin = function (P, n = 1) {
     let t = P < 1500 ? sqrt(P / 15) + 6 : P < 7500 ? P / 750 + 14 : P / 1875 + 20;
     if (n >= 2) t -= 4;
@@ -1365,6 +1372,23 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
       }
       z_dasar += tr.tinggi;
     }
+    // ---- ambang palka (hatch coaming): beban horizontal pA analog dinding bangunan atas (Sec 17 B.2.1.5)
+    const hc = or(G.tinggi_ambang, 0.9);
+    const xA_dpn = or(G.x_ambang_depan_L, max(BA.akil.x_belakang_L - 0.05, 0.5));
+    const xA_blk = or(G.x_ambang_belakang_L, min(BA.kimbul.x_depan_L + 0.05, 0.5));
+    const AMB = [];
+    if (lbp > 0 && hc > 0) {
+      lap.judul("Ambang palka (hatch coaming) - beban horizontal pA");
+      const z_c = (H - T) + hc / 2;
+      for (const [posisi, xL_] of [["depan", xA_dpn], ["samping", 0.5], ["belakang", xA_blk]]) {
+        const r_ = R.beban_dinding_rumah_geladak_pA(L, CB, xL_ * L, z_c, lbp, B, 1, posisi);
+        AMB.push([posisi, xL_, r_]);
+        lap.baris(`Ambang palka ${posisi}`, "", `x/L=${f2(xL_)}; z(SLL)=${f2(z_c)}; n=${f2(r_.n)}; b=${f2(r_.b)}; c=${f2(r_.c)}; pA rumus=${f2(r_.pA_rumus)}; pAmin=${f2(r_.pAmin)}`,
+          r_.pA, "kN/m2", "Sec 17, B.2.1.5 / Sec 16, C.2");
+      }
+      lap.catatan(`Beban ambang palka = beban dinding bangunan atas tingkat 1 pada posisinya (Sec 17, B.2.1.5); ambang depan di x/L = ${f2(xA_dpn)} (palka paling depan), ambang belakang di x/L = ${f2(xA_blk)} (palka paling belakang).`);
+    }
+    const n_pen_amb = hc > 1.2 ? 2 : 1, a_amb = hc / n_pen_amb;
 
     // ---------------- 3 PELAT
     lap.lembar_baru("3 Tebal Pelat");
@@ -1441,6 +1465,18 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
     }
     lap.baris("Jari-jari sudut lubang palka", "M", `l=${G.panjang_palka}; b=${G.lebar_palka}`,
       R.lubang_geladak_jari_jari(G.panjang_palka, G.lebar_palka, B) * 1000, "mm", "Sec 7, A.3.3");
+    if (AMB.length) {
+      lap.judul(`Ambang palka (hatch coaming) - tinggi ${f2(hc)} m`);
+      lap.baris("Tinggi ambang palka - minimum", "", "posisi 1 (geladak lambung timbul terbuka): 600 mm; posisi 2: 450 mm", 600, "mm", "Sec 17, A.2.2", Math.round(hc * 1000));
+      if (hc < 0.6) lap.catatan(`Tinggi ambang ${(hc * 1000).toFixed(0)} mm < 600 mm (posisi 1, Sec 17 A.2.2).`);
+      for (const [posisi, , r_] of AMB) {
+        const ap_ = R.ambang_palka_pelat(L, a_amb, r_.pA, ReH);
+        TP["ambang_" + posisi] = bulat(ap_.t_perlu);
+        lap.baris(`Pelat ambang palka - ${posisi}`, "", `pA=${f2(r_.pA)}; a=${f2(a_amb)} (jarak penegar horizontal); t'=${f2(ap_.t_aksen)}; tmin=${f2(ap_.tmin)}; tK=1,5`,
+          ap_.t_perlu, "mm", "Sec 17, C.2.1", TP["ambang_" + posisi]);
+      }
+      lap.catatan("Ambang palka >= 600 mm diberi penegar horizontal di bagian atasnya; bila tinggi tak tertumpu > 1,2 m ditambah penegar (Sec 17, C.1.2). Ambang memanjang yang menerus dan ikut kekuatan memanjang dirancang seperti pelat sisi (Sec 6) dan diperiksa tekuknya; ambang memanjang lebih panjang dari 0,1L diberi braket tirus di kedua ujungnya (Sec 17, C.1.7).");
+    }
     lap.judul("Lajur atas (sheer strake)");
     let ls;
     for (const [kd] of DAERAH) {
@@ -1893,6 +1929,22 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
         usul_T(pg.W, pg.Aw, TP["geladak" + kd], lg, eg, pg.h_min_mm, pg.I));
       lap.baris("Penumpu geladak - Aw / tinggi min", kd, `h >= l/25 = ${pg.h_min_mm.toFixed(0)} mm`, pg.Aw, "cm2", "Sec 10, B.4.1-4.2");
     }
+    if (AMB.length) {
+      const e_st = or(G.jarak_stay_ambang, pcg ? min(2 * a, 1.5) : 2 * a);
+      lap.judul(`Ambang palka - penegar horizontal & stay (jarak stay e = ${f2(e_st)} m)`);
+      for (const [posisi, , r_] of AMB) {
+        const ps_ = R.penegar_ambang(a_amb, e_st, r_.pA, ReH);
+        lap.baris(`Penegar horizontal ambang ${posisi} - W net`, "", `pA=${f2(r_.pA)}; a=${f2(a_amb)}; l=e stay=${f2(e_st)}; fbc=12; fp=1,0`, ps_.Wnet, "cm3", "Sec 17, C.2.3");
+        lap.baris(`Penegar horizontal ambang ${posisi} - A net`, "", "10 a l pA / ReH", ps_.Anet, "cm2", "Sec 17, C.2.3");
+      }
+      for (const [posisi, , r_] of AMB) {
+        const st = R.stay_ambang(e_st, hc, hc, r_.pA, ReH);
+        lap.baris(`Stay ambang ${posisi} - W net`, "", `e=${f2(e_st)}; hs=${f2(hc)}; pA=${f2(r_.pA)}`, st.Wnet, "cm3", "Sec 17, C.2.2.2");
+        lap.baris(`Stay ambang ${posisi} - tebal badan tw`, "", `hw=hs=${f2(hc)} (braket 45 derajat); tK=1,5; dipakai >= tebal pelat ambang`, st.tw, "mm", "Sec 17, C.2.2.2", max(bulat(st.tw), TP["ambang_" + posisi]));
+      }
+      lap.catatan("Penegar dan stay ambang palka dihitung dengan modulus NET (tanpa korosi): saat memilih profil, kurangi tebal profil dan pelat ambang sebesar tK = 1,5 mm sebelum membandingkan W. Ujung penegar yang dipotong di sudut ambang: W dan A dinaikkan 35% (Sec 17, C.2.3). Kapal dengan muatan geladak: stay berjarak <= 1,5 m (Sec 17, C.1.4).");
+      lap.catatan("Penumpu sisi palka = penumpu geladak di atas. Balok ujung palka (hatch end beam) dan penumpu palka lain dihitung dengan perhitungan kekuatan; tegangan <= 150/k N/mm2 (Sec 10, E).");
+    }
     const A_pil = lg * eg, dp = [];
     if (z_antara) {
       const Pa = BEBAN.M["pD0.6"] * A_pil;
@@ -2032,7 +2084,7 @@ footer.foot { color: var(--muted); font-size: 12px; padding-block: 0 30px; max-w
 (function () {
 "use strict";
 const $ = s => document.querySelector(s);
-const DEFAULT = {"KAPAL": {"nama": "MV CONTOH - General Cargo", "L": 85.0, "B": 14.6, "H": 7.5, "T": 6.0, "CB": 0.72, "v0": 12.0, "daerah_pelayaran": "unlimited", "ReH": 235, "displacement": null, "Tb": 2.6, "Tmin": 2.6, "beban_miring": true}, "SISTEM": {"alas": "melintang", "sisi": "melintang", "geladak": "melintang"}, "JARAK": {"a": 0.6, "a_pembujur": 0.65, "e_gading_besar": 2.4, "jarak_wrang_pelat": 1.8, "hDB": 1.1}, "GELADAK": {"z_geladak_antara": null, "lebar_palka": 8.0, "panjang_palka": 14.4, "muatan_geladak_pc": null, "tinggi_muatan_geladak": null}, "BENTANG": {"gading_utama": null, "lKu": null, "lKo": null, "balok_geladak": null, "penumpu_geladak": null, "lebar_beban_penumpu": null, "pembujur": null, "gading_ceruk": null, "wrang_terbuka": null, "penegar_alas_haluan": null}, "MUATAN": {"G_per_V": 0.7, "tinggi_muatan": null, "tanpa_ceiling": false, "ruang_kosong_saat_muatan_penuh": false}, "TANGKI_DASAR_GANDA": {"ada": true, "rho": 1.025, "z_puncak_pipa_limpah": null, "pv": 0.0}, "SEKAT": {"lebar_lajur_pelat": 1.8, "jarak_penegar": 0.6, "tumpuan_penegar": "jepit_bebas", "z_atas_sekat_tubrukan": null}, "BANGUNAN_ATAS": {"akil": {"tinggi": 2.4, "x_belakang_L": 0.9}, "kimbul": {"tinggi": 2.4, "x_depan_L": 0.22, "x_belakang_L": 0.0}, "rumah_geladak": [{"nama": "Boat deck", "tingkat": 2, "x_depan_L": 0.2, "lebar": 11.0, "tinggi": 2.4, "x_belakang_L": 0.08}, {"nama": "Navigation deck", "tingkat": 3, "x_depan_L": 0.19, "lebar": 9.0, "tinggi": 2.4, "x_belakang_L": 0.1}], "jarak_penegar_dinding": 0.6, "bentang_balok_rumah": 2.8}, "LAIN": {"kubu_tinggi": 1.0, "kubu_jarak_stay": 1.2, "kamar_mesin_Hu": null, "pilar_panjang": null, "pembulatan_tebal": 0.5}, "LAJUR": {"jari_jari_bilga": 1.2, "sama_semua_daerah": true, "M": [{"nama": "K", "jenis": "lunas", "lebar": 1250}, {"nama": "A1", "jenis": "alas", "lebar": 1750}, {"nama": "A2", "jenis": "alas", "lebar": 1750}, {"nama": "A3", "jenis": "alas", "lebar": 1825}, {"nama": "B", "jenis": "bilga", "lebar": 2200}, {"nama": "S1", "jenis": "sisi", "lebar": 1600}, {"nama": "S2", "jenis": "sisi", "lebar": 1600}, {"nama": "S3", "jenis": "sisi", "lebar": 1685}, {"nama": "SH", "jenis": "lajur_atas", "lebar": 1250}], "A": null, "F": null}, "KAMAR_MESIN": {"daya_mesin_kW": 1500, "hDB_km": 1.2, "jumlah_penumpu_per_sisi": 1, "jarak_penumpu_dari_CL": 0.6, "tinggi_pondasi": 0.6, "lebar_pelat_hadap": 300, "diameter_baut": 24, "lebar_mesin": 1.6, "tinggi_mesin": 2.4, "panjang_mesin": 5.0, "geladak": [4.4]}, "PENAMPANG": {"A": {"model": "titik", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}, "F": {"model": "sederhana", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}}, "SENTA": {"jumlah_ruang_muat": 0, "jumlah_kamar_mesin": null, "mesin_di_belakang": true, "cross_tie": 0}, "LAJUR_GELADAK": {"daftar": null}};
+const DEFAULT = {"KAPAL": {"nama": "MV CONTOH - General Cargo", "L": 85.0, "B": 14.6, "H": 7.5, "T": 6.0, "CB": 0.72, "v0": 12.0, "daerah_pelayaran": "unlimited", "ReH": 235, "displacement": null, "Tb": 2.6, "Tmin": 2.6, "beban_miring": true}, "SISTEM": {"alas": "melintang", "sisi": "melintang", "geladak": "melintang"}, "JARAK": {"a": 0.6, "a_pembujur": 0.65, "e_gading_besar": 2.4, "jarak_wrang_pelat": 1.8, "hDB": 1.1}, "GELADAK": {"z_geladak_antara": null, "lebar_palka": 8.0, "panjang_palka": 14.4, "muatan_geladak_pc": null, "tinggi_muatan_geladak": null, "tinggi_ambang": 0.9, "jarak_stay_ambang": null, "x_ambang_depan_L": null, "x_ambang_belakang_L": null}, "BENTANG": {"gading_utama": null, "lKu": null, "lKo": null, "balok_geladak": null, "penumpu_geladak": null, "lebar_beban_penumpu": null, "pembujur": null, "gading_ceruk": null, "wrang_terbuka": null, "penegar_alas_haluan": null}, "MUATAN": {"G_per_V": 0.7, "tinggi_muatan": null, "tanpa_ceiling": false, "ruang_kosong_saat_muatan_penuh": false}, "TANGKI_DASAR_GANDA": {"ada": true, "rho": 1.025, "z_puncak_pipa_limpah": null, "pv": 0.0}, "SEKAT": {"lebar_lajur_pelat": 1.8, "jarak_penegar": 0.6, "tumpuan_penegar": "jepit_bebas", "z_atas_sekat_tubrukan": null}, "BANGUNAN_ATAS": {"akil": {"tinggi": 2.4, "x_belakang_L": 0.9}, "kimbul": {"tinggi": 2.4, "x_depan_L": 0.22, "x_belakang_L": 0.0}, "rumah_geladak": [{"nama": "Boat deck", "tingkat": 2, "x_depan_L": 0.2, "lebar": 11.0, "tinggi": 2.4, "x_belakang_L": 0.08}, {"nama": "Navigation deck", "tingkat": 3, "x_depan_L": 0.19, "lebar": 9.0, "tinggi": 2.4, "x_belakang_L": 0.1}], "jarak_penegar_dinding": 0.6, "bentang_balok_rumah": 2.8}, "LAIN": {"kubu_tinggi": 1.0, "kubu_jarak_stay": 1.2, "kamar_mesin_Hu": null, "pilar_panjang": null, "pembulatan_tebal": 0.5}, "LAJUR": {"jari_jari_bilga": 1.2, "sama_semua_daerah": true, "M": [{"nama": "K", "jenis": "lunas", "lebar": 1250}, {"nama": "A1", "jenis": "alas", "lebar": 1750}, {"nama": "A2", "jenis": "alas", "lebar": 1750}, {"nama": "A3", "jenis": "alas", "lebar": 1825}, {"nama": "B", "jenis": "bilga", "lebar": 2200}, {"nama": "S1", "jenis": "sisi", "lebar": 1600}, {"nama": "S2", "jenis": "sisi", "lebar": 1600}, {"nama": "S3", "jenis": "sisi", "lebar": 1685}, {"nama": "SH", "jenis": "lajur_atas", "lebar": 1250}], "A": null, "F": null}, "KAMAR_MESIN": {"daya_mesin_kW": 1500, "hDB_km": 1.2, "jumlah_penumpu_per_sisi": 1, "jarak_penumpu_dari_CL": 0.6, "tinggi_pondasi": 0.6, "lebar_pelat_hadap": 300, "diameter_baut": 24, "lebar_mesin": 1.6, "tinggi_mesin": 2.4, "panjang_mesin": 5.0, "geladak": [4.4]}, "PENAMPANG": {"A": {"model": "titik", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}, "F": {"model": "sederhana", "titik": null, "lebar_geladak": null, "lebar_alas_datar": null, "jari_jari_bilga": null}}, "SENTA": {"jumlah_ruang_muat": 0, "jumlah_kamar_mesin": null, "mesin_di_belakang": true, "cross_tie": 0}, "LAJUR_GELADAK": {"daftar": null}};
 const STORE_KEY = "bki-hull-input-v1";
 
 // ---------------------------------------------------------------- schema
@@ -2079,6 +2131,14 @@ const HELP = {
   "GELADAK.panjang_palka": ["Panjang bukaan palka (memanjang).", "Panjang lubang palka, antara balok ujung palka depan dan belakang."],
   "GELADAK.muatan_geladak_pc": ["Kosong bila tidak ada muatan geladak.", "Beban statis muatan di geladak cuaca [kN/m²], mis. peti kemas atau kayu. Bila diisi, menggantikan beban geladak bila lebih besar."],
   "GELADAK.tinggi_muatan_geladak": ["Tinggi tumpukan muatan geladak.", ""],
+  "GELADAK.tinggi_ambang": ["Dari geladak ke tepi atas ambang; min 0,60 m.",
+    "Ambang palka (hatch coaming) = dinding pelat keliling lubang palka di atas geladak, tempat tutup palka duduk. Ukur tegak dari sisi atas pelat geladak sampai tepi atas ambang. Minimum 600 mm di geladak lambung timbul terbuka (posisi 1) dan 450 mm di geladak bangunan atas (posisi 2) (Sec 17 A.2.2). Kapal kargo umum biasanya 0,9–1,2 m."],
+  "GELADAK.jarak_stay_ambang": ["Kosong = 2 jarak gading (≤ 1,5 m bila ada muatan geladak).",
+    "Stay ambang = braket tegak di sisi luar ambang yang menopang ambang ke geladak, biasanya segaris dengan gading atau balok. Isi jarak antar stay sepanjang ambang. Kapal yang membawa muatan geladak (kayu, batu bara) jaraknya paling jauh 1,5 m (Sec 17 C.1.4). Jarak ini juga menjadi bentang penegar horizontal ambang."],
+  "GELADAK.x_ambang_depan_L": ["Kosong = 0,05L di belakang akil.",
+    "Posisi ambang depan dari palka paling depan: jarak dari AP ÷ L. Ambang ini menerima beban ombak terbesar, karena itu dipakai untuk menghitung ambang depan. Bila kosong, dianggap 0,05L di belakang dinding belakang akil."],
+  "GELADAK.x_ambang_belakang_L": ["Kosong = 0,05L di depan kimbul.",
+    "Posisi ambang belakang dari palka paling belakang: jarak dari AP ÷ L. Bila kosong, dianggap 0,05L di depan dinding depan kimbul."],
 
   "BENTANG.gading_utama": ["Otomatis: alas dalam s/d geladak terbawah (dibagi senta).",
     "Bentang tak tertumpu ℓ gading utama: panjang gading antara tumpuan bawah (sisi atas alas dalam/wrang di sisi) dan tumpuan atas (geladak terbawah atau geladak antara), termasuk braket. Diukur pada bidang tegak sejajar CL; bila sisi kapal miring lebih dari 10°, diukur sepanjang sisi (Sec 3 C.1, Sec 9 Fig. 9.1). Minimum ℓ = 2,0 m. Lihat gambar di atas."],
@@ -2278,6 +2338,10 @@ const GROUPS = [
     ["GELADAK", "panjang_palka", "Panjang palka", "m", "n", { step: 0.1 }],
     ["GELADAK", "muatan_geladak_pc", "Muatan geladak pc", "kN/m²", "o", { ph: "tidak ada" }],
     ["GELADAK", "tinggi_muatan_geladak", "Tinggi muatan geladak", "m", "o", { ph: "–" }],
+    ["GELADAK", "tinggi_ambang", "Tinggi ambang palka", "m", "n", { step: 0.05, min: 0 }],
+    ["GELADAK", "jarak_stay_ambang", "Jarak stay ambang", "m", "o", { ph: "otomatis", step: 0.1 }],
+    ["GELADAK", "x_ambang_depan_L", "Ambang depan palka terdepan x/L", "", "o", { ph: "otomatis", step: 0.01 }],
+    ["GELADAK", "x_ambang_belakang_L", "Ambang belakang palka terbelakang x/L", "", "o", { ph: "otomatis", step: 0.01 }],
   ]},
   { id: "bentang", title: "Bentang komponen", sec: "Sec 3 C", fields: [
     ["__autoBT"],
@@ -3026,7 +3090,9 @@ function renderSummary() {
   const wr = find("Wrang pelat - tebal"); if (wr) singles.push(["Wrang pelat", wr[4], "mm"]);
   const kb = find("Pelat kubu-kubu (bulwark)"); if (kb) singles.push(["Kubu-kubu", kb[4], "mm"]);
   const gap = find("Pelat geladak di antara palka"); if (gap) singles.push(["Geladak di antara palka (M)", gap[4], "mm"]);
-  let ts = singles.map(([n, v, u]) => `<tr><td>${n}</td><td colspan="3">${fmt(v)} ${u}</td></tr>`).join("");
+  const amd = find("Pelat ambang palka - depan"), ams = find("Pelat ambang palka - samping"), amb = find("Pelat ambang palka - belakang");
+  if (amd) singles.push(["Ambang palka depan / samping / belakang", `${fmt(amd[4])} / ${fmt(ams ? ams[4] : "–")} / ${fmt(amb ? amb[4] : "–")}`, "mm"]);
+  let ts = singles.map(([n, v, u]) => `<tr><td>${n}</td><td colspan="3">${typeof v === "string" ? v : fmt(v)} ${u}</td></tr>`).join("");
 
   const mods = [];
   // A & F selalu melintang; baris memanjang hanya terisi di M
@@ -3269,12 +3335,14 @@ function konstruksiSVG(o) {
     if (!km) {
       const yg = Math.max(G.yd - ((lap.bentang && lap.bentang.balok_geladak) || state.BENTANG.balok_geladak || 3), 0.6), pg = prof("Penumpu geladak - W"), dg = depth(pg);
       g += `<path d="M${xs(yg)} ${Y(H)} L${xs(yg)} ${Y(H - dg)} M${xs(yg - 0.12)} ${Y(H - dg)} L${xs(yg + 0.12)} ${Y(H - dg)}" class="girderT"/>`;
-      g += `<rect x="${(xs(yg) - 3).toFixed(1)}" y="${Y(H + 0.9).toFixed(1)}" width="6" height="${(0.9 * o.s).toFixed(1)}" class="coam"/>`;
+      const hcv = state.GELADAK.tinggi_ambang || 0.9;
+      g += `<rect x="${(xs(yg) - 3).toFixed(1)}" y="${Y(H + hcv).toFixed(1)}" width="6" height="${(hcv * o.s).toFixed(1)}" class="coam"/>`;
       const pil = fzs("Pilar ruang muat") || fzs("Pilar geladak antara");
       if (zone === "M" && pil) g += `<path d="M${xs(yg) - 3} ${Y(H - dg)} L${xs(yg) - 3} ${Y(zb)} M${xs(yg) + 3} ${Y(H - dg)} L${xs(yg) + 3} ${Y(zb)}" class="pil"/>`;
       if (sg === 1) {
         lbl(xs(yg) - 2, Y(H - dg * 0.6), xs(yg) - 12, Y(H) + 74, "Penumpu geladak", pg, "end");
-        lbl(xs(yg) + 3, Y(H + 0.6), xs(yg) + 12, Y(H + 1.25), "Ambang palka", "Sec 17 (belum dihitung)", "start", "sub", "dim");
+        { const ams_ = find("Pelat ambang palka - samping", ""), hcs = (state.GELADAK.tinggi_ambang || 0.9);
+          lbl(xs(yg) + 3, Y(H + 0.6), xs(yg) + 12, Y(H + 1.25), "Ambang palka", ams_ ? `t ${fmt(ams_[4])} mm · h ${Math.round(hcs * 1000)} mm` : "", "start", "sub", "dim"); }
         if (zone === "M" && pil) { const zp = zb + (H - zb) * 0.5; lbl(xs(yg) - 4, Y(zp), xs(yg) - 16, Y(zp) + 4, "Pilar", pil[6] || "", "end"); }
       }
     }
